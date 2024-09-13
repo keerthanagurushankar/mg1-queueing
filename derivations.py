@@ -1,5 +1,6 @@
-import math
+import math, random
 import numpy as np
+import lib
 
 ## random variable transformations
 
@@ -19,23 +20,6 @@ def rv_sum(X1, X2):
     EX = X1[1] + X2[1]
     EXsq = X1[2] + 2 * X1[1] * X2[1] + X2[2]
     return [1, EX, EXsq]
-
-## common random variables
-
-def moments_from_samples(samples, NMOMENTS=4):
-    moments = [np.mean([S**k for S in samples]) for k in range(NMOMENTS)]
-    return moments
-
-def moments_from_sample_gen(sample_generator, NSAMPLES=10**6, NMOMENTS=4):
-    samples = [sample_generator() for _ in range(NSAMPLES)]
-    moments = [np.mean([S**k for S in samples]) for k in range(NMOMENTS)]
-    return moments
-
-def exp(mu, NMOMENTS=4):
-    return [math.factorial(k) * (1/mu)**k for k in range(NMOMENTS)]
-
-def det(D, NMOMENTS=4):
-    return [1, D] + [0] * (NMOMENTS-2)
 
 ## MG1 Formulas
 
@@ -73,16 +57,22 @@ class MG1:
         self.S = S
         self.Se = excess(S)
         self.rho = l * S[1]
-        assert self.rho < 1, "Load must be less than 1"        
+        assert self.rho < 1, "Load must be less than 1"
 
         self.BP = BP(S, l, S)
-        self.W = two_case_rv(1-self.rho, self.rho, det(0), self.BP.W())
+        self.W = two_case_rv(1-self.rho, self.rho, [1, 0, 0], self.BP.W())
 
     def T_FCFS(self):
         # return rv_sum(self.W, self.S)
         EW = self.rho / (1-self.rho) * self.Se[1]
         EWsq = 2 * EW**2 + self.rho / (1-self.rho) * self.Se[2]
         return rv_sum([1, EW, EWsq], self.S)
+
+    def T_PSJF(self):
+        self.S_gen = lambda _ : 0        
+        Sx = lambda x : [S for S in S_samples if S <= x]
+        Resx = lambda x : x/(1-self.l*np.mean(Sx(x)))
+        pass
     
 class TwoClassMG1:
     def __init__(self, l1, l2, S1, S2):
@@ -106,7 +96,9 @@ class TwoClassMG1:
         self.W = [1, EW, EWsq]
 
     def T_FCFS(self):
-        return rv_sum(self.W, self.S)
+        T1 = rv_sum(self.W, self.S1)
+        T2 = rv_sum(self.W, self.S2)
+        return T1, T2
 
     def T_PPrio12(self):
         T1 = MG1(self.l1, self.S1).T_FCFS()
@@ -139,58 +131,66 @@ class TwoClassMG1:
                             + self.S2[1]), "Wrong NPPrio ET2 derivation"
         return T1, T2
 
+    def T_NPAccPrio(self, b1, b2):
+        # lA = (1-b2/b1)*l1
+        # AI0 = BP[S, lA, S1], AI1 = BP[SuA, lA, S1], BP = BP[AI0, l2 + b2/b1*l1, AI1]
+        # TA, TuA = MG1(lA, l-lA, S1, SuA).T_NPPrio12()
+        # VuA = b2 * T2 = b2 * TuA = b1 * T1uA
+        # T1 = two_case_rv(1-b2/b1, b2/b1, TA, b2/b1 * TuA)
+
+        pass
+
     def T_ASHybrid(self, p):
         Ta, Tb = self.T_PPrio12()
         T1 = two_case_rv(1-p, p, Ta, Tb)
         T2 = two_case_rv(p, 1-p, Ta, Tb)
         return T1, T2
 
+    def T_timeavg(self, T12):
+        T1, T2 = T12
+        return two_case_rv(self.l1, self.l2, T1, T2)
+
+    def T(self, policy_name):
+        if policy_name == "PPrio12":
+            return self.T_PPrio12()
+        if policy_name == "NPPrio12":
+            return self.T_NPPrio12()
+        if policy_name == "FCFS":
+            return self.T_FCFS()
+        if policy_name[0] == "ASH":
+            return self.T_ASHybrid(policy_name[2])
+            
+            
 
 ## plot
 
 import matplotlib.pyplot as plt
 
-def plot_MM1():
-    mu1, mu2 = 10, 5
-    S1 = [math.factorial(k) * (1/mu1)**k for k in range(4)]
-    S2 = [math.factorial(k) * (1/mu2)**k for k in range(4)]    
-    rho, FCFS, PPrio12, PPrio21, ASH = [], [], [], [], []
+def plot_ETsq(S1_gen, S2_gen):
+    S1, S2 = lib.moments_from_sample_gen(S1_gen), lib.moments_from_sample_gen(S2_gen)
+    policy_names = ["FCFS", "PPrio12"]
+    T_bypi_byrho = []
+    rhos = np.linspace(0.3, 0.9, 10)
+    
+    for rho in rhos:
+        l = rho/(1/mu1 + 1/mu2)
+        MG1 = TwoClassMG1(l, l, S1, S2)
+        T_bypi = [MG1.T_timeavg(MG1.T(policy))[2] for policy in policy_names]
+        T_bypi_byrho.append(T_bypi)
 
-    for l in np.linspace(0.3, 1/(1/mu1+1/mu2)-0.1, 20) :
-        rho.append(l*(1/mu1+1/mu2))
-        MM12 = TwoClassMG1(l, l, S1, S2)
-        MM21 = TwoClassMG1(l, l, S2, S1)
-        
-        FCFS.append(MM12.T_FCFS()[1])
-        PPrio12.append(two_case_rv(l, l, *MM12.T_PPrio12())[1])
-        PPrio21.append(two_case_rv(l, l, *MM21.T_PPrio12())[1])
-        ASH.append(two_case_rv(l, l, *MM12.T_ASHybrid(0.6))[1])
+    T_byrho_bypi = np.array(T_bypi_byrho).T
 
-    print(PPrio12, ASH)
-
-    plt.plot(rho, FCFS, label='FCFS', linestyle='-')
-    plt.plot(rho, PPrio12, label='PPrio12')
-    plt.plot(rho, PPrio21, label='PPrio21')    
-    plt.plot(rho, ASH, label='ASH', linestyle='--')
+    ls = ['-', '-.', '--', ':']
+    for i, policy in enumerate(policy_names):
+        plt.plot(rhos, T_byrho_bypi[i], label=policy, ls=ls[i%len(ls)])
     plt.xlabel("Load")
-    plt.ylabel("ET")
+    plt.ylabel("ETsq")
     plt.legend()
     plt.show()
 
-def plot_MH1():
-    mu1, mu2 = 0.4, 0.2
-    
-
 if __name__ == "__main__":
-    l1, l2 = 0.15, 0.1
-    mu1, mu2 = 0.4, 0.2
-    S1 = [math.factorial(k) * (1/mu1)**k for k in range(4)]
-    S2 = [math.factorial(k) * (1/mu2)**k for k in range(4)]
-    MM1 = TwoClassMG1(l1, l2, S1, S2)
-
-    print("FCFS: ", MM1.T_FCFS())
-    print("PPrio12: ", two_case_rv(l1, l2, *MM1.T_PPrio12()))
-    print("ASHybrid(1): ", two_case_rv(l1, l2, *MM1.T_ASHybrid(1)))
+    mu1, mu2 = 1.5, 1
     
-    plot_MM1()
+    plot_ETsq(lib.hyperexponential(mu1, 10), lib.hyperexponential(mu2, 10))
+    plot_ETsq(lambda:random.expovariate(mu1), lambda:random.expovariate(mu2))
     

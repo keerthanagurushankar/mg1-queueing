@@ -43,10 +43,11 @@ class JobClass:
                     self.generate_service_time(), self)
 
 class MG1:
-    def __init__(self, job_classes, is_preemptive=False):
+    def __init__(self, job_classes, is_preemptive=False, is_dynamic_priority=False):
         # Parameters
         self.job_classes = job_classes
         self.is_preemptive = is_preemptive
+        self.is_dynamic_priority = is_dynamic_priority
         
         # System state
         self.event_queue = [] # holds events in order of event time
@@ -116,10 +117,18 @@ class MG1:
         heapq.heappush(self.event_queue, self.current_departure_event)
 
     def update_priorities(self):
+        if not self.is_dynamic_priority:
+            return
+        
+        updated_priority = False
         for job in self.job_queue:
+            old_priority = job.priority
             age = self.current_time - job.arrival_time
             job.priority = job.job_class.priority((job.remaining_time, job.service_time, age))
-        heapq.heapify(self.job_queue)
+            if not math.isclose(old_priority, job.priority):
+                updated_priority = True
+        if updated_priority:
+            heapq.heapify(self.job_queue)
         
     def preempt_current_job(self):
         time_in_service = self.current_time - self.current_service_start_time
