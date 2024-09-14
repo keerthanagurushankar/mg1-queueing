@@ -12,9 +12,18 @@ def moments_from_sample_gen(sample_generator, NSAMPLES=10**6, NMOMENTS=4):
     moments = [np.mean([S**k for S in samples]) for k in range(NMOMENTS)]
     return moments
 
+def Csq_from_moments(moments):
+    return moments[2] / moments[1]**2 - 1
+
 ## common random variable generators
 
 # random variable generators
+def exp(mu):
+    return lambda:random.expovariate(mu)
+
+def det(mu):
+    return lambda:1/mu 
+
 def hyperexponential(mu, Csq):
     p = 0.5 * (1 + math.sqrt((Csq - 1)/ (Csq + 1)))
     mu1, mu2 = 2 * p * mu, 2 * (1-p) * mu

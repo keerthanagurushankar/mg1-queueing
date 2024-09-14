@@ -54,13 +54,24 @@ class BP:
 class MG1:
     def __init__(self, l, S):
         self.l = l
-        self.S = S
-        self.Se = excess(S)
-        self.rho = l * S[1]
+        
+        if type(S) is list:
+            if len(S) < 5: # if S input is given as moments
+                self.S = S 
+            else: # if S input is given as samples list
+                self.S_samples = S
+                self.S = lib.moments_from_samples(S)
+        else: # if S input is given as sample generator function
+            self.S_gen = S
+            self.S = lib.moments_from_sample_gen(S)
+            
+        self.Se = excess(self.S)
+        self.rho = self.l * self.S[1]
         assert self.rho < 1, "Load must be less than 1"
 
-        self.BP = BP(S, l, S)
+        self.BP = BP(self.S, self.l, self.S)
         self.W = two_case_rv(1-self.rho, self.rho, [1, 0, 0], self.BP.W())
+
 
     def T_FCFS(self):
         # return rv_sum(self.W, self.S)
@@ -73,6 +84,31 @@ class MG1:
         Sx = lambda x : [S for S in S_samples if S <= x]
         Resx = lambda x : x/(1-self.l*np.mean(Sx(x)))
         pass
+
+    def T_FB(self):
+        
+        pass
+    
+    def T_SRPT(self):
+        if self.S_gen is None:
+            raise Exception("Need job size generator to compute T_SRPT")
+        
+        eps = 0.05
+        S_samples = [self.S_gen() for _ in range(10**4)]
+        Sxbar_samples = lambda x: [S if  S < x else x for S in S_samples]
+        ESxbar_sq = lambda x : np.mean([S**2 for S in Sxbar_samples(x)])
+
+        rhox = lambda x: self.l * np.mean([S if S < x else 0 for S in S_samples])
+        EWaitx = lambda x: self.l / 2 * ESxbar_sq(x) / (1 - rhox(x))**2
+        EResx = lambda x: np.sum([eps/(1-rhox(t)) for t in np.arange(0, x, eps)])
+        ET = np.mean([EWaitx(S) + EResx(S) for S in S_samples])
+        return [1, ET]
+
+    def T(self, policy_name):
+        if policy_name == "FCFS":
+            return self.T_FCFS()
+        elif policy_name == "SRPT":
+            return self.T_SRPT()
     
 class TwoClassMG1:
     def __init__(self, l1, l2, S1, S2):
@@ -159,18 +195,18 @@ class TwoClassMG1:
             return self.T_FCFS()
         if policy_name[0] == "ASH":
             return self.T_ASHybrid(policy_name[2])
+        if policy_name == "AccPrio":
+            return self.T_NPPrio12()
             
-            
-
 ## plot
 
 import matplotlib.pyplot as plt
 
-def plot_ETsq(S1_gen, S2_gen):
+def plot_ETsq(plot_title, S1_gen, S2_gen):
     S1, S2 = lib.moments_from_sample_gen(S1_gen), lib.moments_from_sample_gen(S2_gen)
     policy_names = ["FCFS", "PPrio12"]
     T_bypi_byrho = []
-    rhos = np.linspace(0.3, 0.9, 10)
+    rhos = np.linspace(0.4, 0.9, 10)
     
     for rho in rhos:
         l = rho/(1/mu1 + 1/mu2)
@@ -185,12 +221,13 @@ def plot_ETsq(S1_gen, S2_gen):
         plt.plot(rhos, T_byrho_bypi[i], label=policy, ls=ls[i%len(ls)])
     plt.xlabel("Load")
     plt.ylabel("ETsq")
+    plt.title(plot_title)
     plt.legend()
     plt.show()
 
 if __name__ == "__main__":
-    mu1, mu2 = 1.5, 1
+    mu1, mu2 = 2, 1
     
-    plot_ETsq(lib.hyperexponential(mu1, 10), lib.hyperexponential(mu2, 10))
-    plot_ETsq(lambda:random.expovariate(mu1), lambda:random.expovariate(mu2))
+    plot_ETsq("Hyperexponential", lib.hyperexponential(mu1, 1), lib.hyperexponential(mu2, 10))
+    plot_ETsq("Exponential", lambda:random.expovariate(mu1), lambda:random.expovariate(mu2))
     

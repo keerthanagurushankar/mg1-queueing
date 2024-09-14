@@ -1,10 +1,7 @@
 import heapq
 import random, math
 import numpy as np
-import derivations
-
-SIMULATION_TIME = 1e6
-FLOATING_PT_ERR = 1e-3
+import lib, derivations
 
 class Event:
     def __init__(self, event_type, time, job=None):
@@ -21,34 +18,48 @@ class Job:
         self.service_time = service_time
         self.remaining_time = service_time        
         self.job_class = job_class
-        self.priority = job_class.priority((service_time, service_time, 0))
+        self.priority = job_class.priority(self.remaining_time, self.service_time, 0)
 
     def __lt__(self, other):
-        if self.priority == other.priority:
+        if self.priority == other.priority: # isclose?
             return self.arrival_time < other.arrival_time # older is better within class
         return self.priority > other.priority # higher priority is better
 
 class JobClass:
-    def __init__(self, label, l, S, V=None): #lambda _:-label):
-        self.label = label
+    def __init__(self, index, l, S): 
+        self.index = index
         self.l = l
         self.generate_service_time = S
-        if V is None:
-            self.priority = lambda _ : -label
-        else:
-            self.priority = V
+        self.priority = None
 
     def generate_next_job(self, current_time):
         return Job(current_time + random.expovariate(self.l),
                     self.generate_service_time(), self)
 
 class MG1:
-    def __init__(self, job_classes, is_preemptive=False, is_dynamic_priority=False):
+    def __init__(self, job_classes, policy):
         # Parameters
         self.job_classes = job_classes
-        self.is_preemptive = is_preemptive
-        self.is_dynamic_priority = is_dynamic_priority
-        
+        self.policy = policy    
+
+        # initialize priority_function of job classes
+        for job_class in job_classes:
+            if policy.priority_fn == None:
+                job_class.priority = lambda r, s, t, idx=job_class.index: -idx
+            else:
+                job_class.priority = lambda r, s, t, idx=job_class.index: \
+                   policy.priority_fn(r, s, t, idx)
+
+        # set simulation time based on variation of size_distribution
+        Csq = np.mean([lib.Csq_from_moments(lib.moments_from_sample_gen(
+                 job_class.generate_service_time)) for job_class in job_classes])
+        if Csq < 5 and len(job_classes) == 1:
+            self.simulation_time = 5 * 10**5
+        elif Csq < 50:
+            self.simulation_time = 5 * 10**6
+        else:
+            self.simulation_time = 5 * 10**7
+                                
         # System state
         self.event_queue = [] # holds events in order of event time
         self.job_queue = [] # holds waiting jobs in order of priority
@@ -60,7 +71,7 @@ class MG1:
         # Metrics
         self.metrics = []
         
-    def initialize(self):
+    def initialize(self):     
         for job_class in self.job_classes:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
@@ -68,7 +79,7 @@ class MG1:
     def run(self):
         self.initialize()
         
-        while self.event_queue and self.current_time < SIMULATION_TIME:
+        while self.event_queue and self.current_time < self.simulation_time:
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
 
@@ -88,7 +99,7 @@ class MG1:
         # Start working on the arrival if idle or lower preemptive priority
         if self.current_job is None:
             self.start_service()
-        elif self.is_preemptive: # and self.current_job.priority < job.priority:
+        elif self.policy.is_preemptive: # and self.current_job.priority < job.priority:
             self.update_priorities()
             if self.current_job.priority < job.priority:
                 self.preempt_current_job()
@@ -103,6 +114,7 @@ class MG1:
             self.current_job = None
             self.current_service_time = None
             self.current_departure_event = None
+        
 
     def start_service(self):
         self.update_priorities()
@@ -117,14 +129,14 @@ class MG1:
         heapq.heappush(self.event_queue, self.current_departure_event)
 
     def update_priorities(self):
-        if not self.is_dynamic_priority:
+        if not self.policy.is_dynamic_priority:
             return
         
         updated_priority = False
         for job in self.job_queue:
             old_priority = job.priority
-            age = self.current_time - job.arrival_time
-            job.priority = job.job_class.priority((job.remaining_time, job.service_time, age))
+            job.priority = job.job_class.priority(job.remaining_time, job.service_time,
+                                                  self.current_time - job.arrival_time)
             if not math.isclose(old_priority, job.priority):
                 updated_priority = True
         if updated_priority:
@@ -142,11 +154,12 @@ class MG1:
  
 
     def record_metrics(self, job, departure_time):
-        job_metrics = {'job_class': job.job_class.label, 
+        job_metrics = {'job_class': job.job_class.index, 
                        'arrival_time': job.arrival_time,
                        'departure_time': departure_time,
                        'job_size': job.service_time,
                        'response_time': departure_time - job.arrival_time,
-                       'waiting_time': departure_time - job.arrival_time - job.service_time}
+                       'waiting_time': departure_time - job.arrival_time - job.service_time,
+                       'priority': job.priority} # at completion
         #print(job_metrics)
         self.metrics.append(job_metrics)
