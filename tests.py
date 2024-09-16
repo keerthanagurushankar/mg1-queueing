@@ -93,15 +93,15 @@ if __name__ == "__main__":
     # run_2Class_MG1_tests("2cMM1c", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.PPrio12)
     # run_2Class_MG1_tests("2cMM1d", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.PPrio12)
     # run_2Class_MG1_tests("2cMD1c", l1, l2, lib.det(mu1), lib.det(mu2), policy.PPrio12)
-    # run_2Class_MG1_tests("2cMH1c", l1, l2, lib.hyperexponential(mu1, Csq=5),
-    #                      lib.hyperexponential(mu2, Csq=5), policy.PPrio12)
+    #run_2Class_MG1_tests("2cMH1c", l1, l2, lib.hyperexponential(mu1, Csq=5),
+     #                     lib.hyperexponential(mu2, Csq=5), policy.PPrio12)
     # run_2Class_MG1_tests("2cMH1d", l1, l2, lib.hyperexponential(mu1, Csq=10),
     #                      lib.hyperexponential(mu2, Csq=10), policy.PPrio12)
     
     
     print("**2 CLASS NP-ACC-PRIO TESTS**")
     NPAccPrio = policy.AccPrio(b1 = 100, b2 = 1, is_preemptive = False) # close to NPPrio12
-    run_2Class_MG1_tests("2cMM1NPacc100", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
+    # run_2Class_MG1_tests("2cMM1NPacc100", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
     # run_2Class_MG1_tests("2cMD1NPacc100", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
     # run_2Class_MG1_tests("2cMH1NPacc100", l1, l2, lib.hyperexponential(mu1, Csq=5),
     #                      lib.hyperexponential(mu2, Csq=5), NPAccPrio)
