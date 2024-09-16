@@ -1,13 +1,13 @@
 import math, random
 import numpy as np
 
-## moments from samples needed for derivations
+## moments from samples conversions
 
 def moments_from_samples(samples, NMOMENTS=4):
     moments = [np.mean([S**k for S in samples]) for k in range(NMOMENTS)]
     return moments
 
-def moments_from_sample_gen(sample_generator, NSAMPLES=10**6, NMOMENTS=4):
+def moments_from_sample_gen(sample_generator, NSAMPLES=10**5, NMOMENTS=4):
     samples = [sample_generator() for _ in range(NSAMPLES)]
     moments = [np.mean([S**k for S in samples]) for k in range(NMOMENTS)]
     return moments
@@ -17,7 +17,6 @@ def Csq_from_moments(moments):
 
 ## common random variable generators
 
-# random variable generators
 def exp(mu):
     return lambda:random.expovariate(mu)
 

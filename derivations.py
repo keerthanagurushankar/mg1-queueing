@@ -92,14 +92,18 @@ class MG1:
     def T_SRPT(self):
         if self.S_gen is None:
             raise Exception("Need job size generator to compute T_SRPT")
+        print("FCFS", self.T_FCFS())
         
-        eps = 0.05
-        S_samples = [self.S_gen() for _ in range(10**4)]
+        S_samples = [self.S_gen() for _ in range(4 * 10**3)]
         Sxbar_samples = lambda x: [S if  S < x else x for S in S_samples]
         ESxbar_sq = lambda x : np.mean([S**2 for S in Sxbar_samples(x)])
 
         rhox = lambda x: self.l * np.mean([S if S < x else 0 for S in S_samples])
         EWaitx = lambda x: self.l / 2 * ESxbar_sq(x) / (1 - rhox(x))**2
+
+        eps = 0.05
+        xs = np.arange(0, 1, eps)        
+        #rhoxs = [rhox(x) for x in xs]
         EResx = lambda x: np.sum([eps/(1-rhox(t)) for t in np.arange(0, x, eps)])
         ET = np.mean([EWaitx(S) + EResx(S) for S in S_samples])
         return [1, ET]
@@ -195,7 +199,7 @@ class TwoClassMG1:
             return self.T_FCFS()
         if policy_name[0] == "ASH":
             return self.T_ASHybrid(policy_name[2])
-        if policy_name == "AccPrio":
+        if policy_name == "NPAccPrio":
             return self.T_NPPrio12()
             
 ## plot

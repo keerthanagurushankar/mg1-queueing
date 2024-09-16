@@ -1,7 +1,7 @@
 import heapq
 import random, math
 import numpy as np
-import lib, derivations
+import lib
 
 class Event:
     def __init__(self, event_type, time, job=None):
@@ -41,7 +41,9 @@ class MG1:
         # Parameters
         self.job_classes = job_classes
         self.policy = policy    
-
+        self.simulation_time = 10**6
+        self.inspection_rate = 0.1
+        
         # initialize priority_function of job classes
         for job_class in job_classes:
             if policy.priority_fn == None:
@@ -50,16 +52,6 @@ class MG1:
                 job_class.priority = lambda r, s, t, idx=job_class.index: \
                    policy.priority_fn(r, s, t, idx)
 
-        # set simulation time based on variation of size_distribution
-        Csq = np.mean([lib.Csq_from_moments(lib.moments_from_sample_gen(
-                 job_class.generate_service_time)) for job_class in job_classes])
-        if Csq < 5 and len(job_classes) == 1:
-            self.simulation_time = 5 * 10**5
-        elif Csq < 50:
-            self.simulation_time = 5 * 10**6
-        else:
-            self.simulation_time = 5 * 10**7
-                                
         # System state
         self.event_queue = [] # holds events in order of event time
         self.job_queue = [] # holds waiting jobs in order of priority
@@ -87,6 +79,8 @@ class MG1:
                 self.handle_arrival(event)
             elif event.event_type == 'Departure':                  
                 self.handle_departure(event)
+            elif event.event_type == 'Inspection':
+                self.handle_inspection(event)
 
     def handle_arrival(self, event):
         job = event.job
@@ -114,7 +108,6 @@ class MG1:
             self.current_job = None
             self.current_service_time = None
             self.current_departure_event = None
-        
 
     def start_service(self):
         self.update_priorities()
@@ -152,7 +145,6 @@ class MG1:
         
         self.start_service()
  
-
     def record_metrics(self, job, departure_time):
         job_metrics = {'job_class': job.job_class.index, 
                        'arrival_time': job.arrival_time,
@@ -163,3 +155,18 @@ class MG1:
                        'priority': job.priority} # at completion
         #print(job_metrics)
         self.metrics.append(job_metrics)
+
+    def handle_inspection(self):        
+        # check that highest priority job is being worked on
+        current_job_priority = self.current_job.job_class.priority(
+            self.current_time - self.current_service_start_time,
+            self.current_job.service_time,
+            self.current_time - job.arrival_time)
+        
+        for job in self.job_queue: 
+            job_priority = job.job_class.priority(job.remaining_time, job.service_time,
+                                            self.current_time - job.arrival_time)
+
+            assert job_priority < current_job_priority or \
+                (not self.is_preemptive and job.arrival_time > self.current_service_start_time)
+
