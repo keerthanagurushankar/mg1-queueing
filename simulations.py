@@ -35,6 +35,7 @@ class JobClass:
         self.l = l
         self.generate_service_time = S
         self.priority = None
+        self.b = None
 
     def generate_next_job(self, current_time):
         return Job(current_time + random.expovariate(self.l),
@@ -55,6 +56,7 @@ class MG1:
             else:
                 job_class.priority = lambda r, s, t, idx=job_class.index: \
                    policy.priority_fn(r, s, t, idx)
+                job_class.b = policy.priority_fn(0, 0, 1, job_class.index)
 
         # System state
         self.event_queue = [] # holds events in order of event time
@@ -87,7 +89,9 @@ class MG1:
             elif event.event_type == 'Departure':                  
                 self.handle_departure(event)
             elif event.event_type == 'Inspection':
-                self.handle_inspection(event)
+                self.handle_inspection()
+            elif event.event_type == 'Preemption':
+                self.preempt_current_job()
 
     def handle_arrival(self, event):
         job = event.job
@@ -117,7 +121,7 @@ class MG1:
             self.update_priorities()            
             self.start_service()
 
-    def handle_inspection(self, event):
+    def handle_inspection(self):
         if self.current_job is None: 
             assert not self.job_queue, "if idle, must not have waiting jobs"
             assert self.current_service_start_time is None and \
@@ -172,6 +176,9 @@ class MG1:
             heapq.heapify(self.job_queue)
         
     def preempt_current_job(self):
+        if not self.current_job:
+            return
+        
         time_in_service = self.current_time - self.current_service_start_time
         self.current_job.remaining_time = self.current_job.remaining_time - time_in_service
         heapq.heappush(self.job_queue, self.current_job)
@@ -181,7 +188,31 @@ class MG1:
 
         self.update_priorities()
         self.start_service()
- 
+
+    def calculate_overtake_time(self, queue_job):
+        b_curr, b_queue = self.current_job.job_class.b, queue_job.job_class.b
+        if b_queue <= b_curr:
+            return None
+
+        t_overtake = (b_queue * queue_job.arrival_time - b_curr * self.current_service_start_time)\
+            / (b_queue - b_curr)
+        return t_overtake
+
+    def schedule_preemption(self):
+        if not self.current_job or not self.job_queue:
+            return
+
+        overtake_times = []
+        for job in self.job_queue:
+            t_overtake = self.calculate_overtake_time(job)
+            if t_overtake and t_overtake > self.current_time:
+                overtake_times.append(t_overtake)
+
+        if overtake_times:
+            next_preemption_time = min(overtake_times)
+            heapq.heappush(self.event_queue, Event('Preemption', next_preemption_time))
+
+        
     def record_metrics(self, job, departure_time):
         job_metrics = {'job_class': job.job_class.index, 
                        'arrival_time': job.arrival_time,
@@ -192,6 +223,3 @@ class MG1:
                        'priority': job.priority} # at completion
         #print(job_metrics)
         self.metrics.append(job_metrics)
-
-
-
