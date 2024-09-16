@@ -41,8 +41,8 @@ class MG1:
         # Parameters
         self.job_classes = job_classes
         self.policy = policy    
-        self.simulation_time = 10**6
-        self.inspection_rate = 0.1
+        self.simulation_time = 10**5
+        self.inspection_rate = 1
         
         # initialize priority_function of job classes
         for job_class in job_classes:
@@ -67,6 +67,9 @@ class MG1:
         for job_class in self.job_classes:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
+
+        next_inspection_time = random.expovariate(self.inspection_rate)
+        heapq.heappush(self.event_queue, Event('Inspection', next_inspection_time))
         
     def run(self):
         self.initialize()
@@ -74,6 +77,8 @@ class MG1:
         while self.event_queue and self.current_time < self.simulation_time:
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
+
+            # print(event.time, event.event_type, event.job)
 
             if event.event_type == 'Arrival':           
                 self.handle_arrival(event)
@@ -102,21 +107,49 @@ class MG1:
         assert event.job == self.current_job, "Tried to depart job not in service"
         self.record_metrics(event.job, self.current_time)
 
+        self.current_job = None
+        self.current_service_start_time = None
+        self.current_departure_event = None
+        
         if self.job_queue:
+            self.update_priorities()            
             self.start_service()
+
+    def handle_inspection(self, event):
+        if self.current_job is None: 
+            assert not self.job_queue, "if idle, must not have waiting jobs"
+            assert self.current_service_start_time is None and \
+              self.current_departure_event is None, "Bad state of current job"
         else:
-            self.current_job = None
-            self.current_service_time = None
-            self.current_departure_event = None
+            # check that highest priority job is being worked on
+            if self.policy.is_preemptive:
+                current_job_priority = self.current_job.job_class.priority(
+                    self.current_time - self.current_service_start_time,
+                    self.current_job.service_time,
+                    self.current_time - self.current_job.arrival_time)
+
+                for job in self.job_queue:
+                    job_priority = job.job_class.priority(job.remaining_time, job.service_time,
+                                                      self.current_time - job.arrival_time)
+                    assert job_priority <= current_job_priority, "Not working on highest prio job"
+            else:
+                for job in self.job_queue:
+                    assert job.priority <= self.current_job.priority or job.arrival_time \
+                       >= self.current_service_start_time, "Not working on highest prio job"
+
+        next_inspection_time = self.current_time + random.expovariate(self.inspection_rate)
+        heapq.heappush(self.event_queue, Event('Inspection', next_inspection_time))
 
     def start_service(self):
-        self.update_priorities()
+        # assume system is not empty
+        # recompute job priorities if necessary
+        # start working on job of current highest priority
         self.current_job = heapq.heappop(self.job_queue)
         self.current_service_start_time = self.current_time
         
         departure_time = self.current_time + self.current_job.remaining_time
         assert self.current_time > self.current_job.arrival_time or math.isclose( \
-          self.current_time, self.current_job.arrival_time),"Tried to start service before arrival"
+          self.current_time, self.current_job.arrival_time), "Tried to start service before arrival"
         
         self.current_departure_event = Event('Departure', departure_time, self.current_job)
         heapq.heappush(self.event_queue, self.current_departure_event)
@@ -124,7 +157,7 @@ class MG1:
     def update_priorities(self):
         if not self.policy.is_dynamic_priority:
             return
-        
+
         updated_priority = False
         for job in self.job_queue:
             old_priority = job.priority
@@ -132,6 +165,7 @@ class MG1:
                                                   self.current_time - job.arrival_time)
             if not math.isclose(old_priority, job.priority):
                 updated_priority = True
+       
         if updated_priority:
             heapq.heapify(self.job_queue)
         
@@ -142,7 +176,8 @@ class MG1:
         
         self.event_queue.remove(self.current_departure_event)
         heapq.heapify(self.event_queue)
-        
+
+        self.update_priorities()
         self.start_service()
  
     def record_metrics(self, job, departure_time):
@@ -156,17 +191,5 @@ class MG1:
         #print(job_metrics)
         self.metrics.append(job_metrics)
 
-    def handle_inspection(self):        
-        # check that highest priority job is being worked on
-        current_job_priority = self.current_job.job_class.priority(
-            self.current_time - self.current_service_start_time,
-            self.current_job.service_time,
-            self.current_time - job.arrival_time)
-        
-        for job in self.job_queue: 
-            job_priority = job.job_class.priority(job.remaining_time, job.service_time,
-                                            self.current_time - job.arrival_time)
 
-            assert job_priority < current_job_priority or \
-                (not self.is_preemptive and job.arrival_time > self.current_service_start_time)
 

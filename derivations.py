@@ -193,14 +193,16 @@ class TwoClassMG1:
     def T(self, policy_name):
         if policy_name == "PPrio12":
             return self.T_PPrio12()
-        if policy_name == "NPPrio12":
+        elif policy_name == "NPPrio12":
             return self.T_NPPrio12()
-        if policy_name == "FCFS":
+        elif policy_name == "FCFS":
             return self.T_FCFS()
-        if policy_name[0] == "ASH":
+        elif policy_name[0] == "ASH":
             return self.T_ASHybrid(policy_name[2])
-        if policy_name == "NPAccPrio":
+        elif policy_name == "NPAccPrio":
             return self.T_NPPrio12()
+        else:
+            return None
             
 ## plot
 

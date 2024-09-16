@@ -14,5 +14,5 @@ PPrio12 = Policy("PPrio12", priority_fn=lambda r, s, t, k:-k, is_preemptive=True
 def AccPrio(b1, b2, is_preemptive=False):
     def V(r, s, t, k):
         return (k == 1) * b1 * t + (k == 2) * b2 * t
-    return Policy("NPAccPrio", priority_fn=V, is_preemptive=is_preemptive,
+    return Policy(("" if is_preemptive else "N") +"PAccPrio", priority_fn=V, is_preemptive=is_preemptive,
                   is_dynamic_priority=True)
