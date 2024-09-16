@@ -25,6 +25,10 @@ class Job:
             return self.arrival_time < other.arrival_time # older is better within class
         return self.priority > other.priority # higher priority is better
 
+    def current_priority(self, current_time):
+        return self.job_class.priority(self.remaining_time, self.service_time,
+                                                current_time - self.arrival_time)
+
 class JobClass:
     def __init__(self, index, l, S): 
         self.index = index
@@ -78,8 +82,6 @@ class MG1:
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
 
-            # print(event.time, event.event_type, event.job)
-
             if event.event_type == 'Arrival':           
                 self.handle_arrival(event)
             elif event.event_type == 'Departure':                  
@@ -123,14 +125,15 @@ class MG1:
         else:
             # check that highest priority job is being worked on
             if self.policy.is_preemptive:
-                current_job_priority = self.current_job.job_class.priority(
-                    self.current_time - self.current_service_start_time,
-                    self.current_job.service_time,
-                    self.current_time - self.current_job.arrival_time)
+                current_job_priority = self.current_job.current_priority(self.current_time)
+                
+                # current_job_priority = self.current_job.job_class.priority(
+                #     self.current_time - self.current_service_start_time,
+                #     self.current_job.service_time,
+                #     self.current_time - self.current_job.arrival_time)
 
                 for job in self.job_queue:
-                    job_priority = job.job_class.priority(job.remaining_time, job.service_time,
-                                                      self.current_time - job.arrival_time)
+                    job_priority = job.current_priority(self.current_time)
                     assert job_priority <= current_job_priority, "Not working on highest prio job"
             else:
                 for job in self.job_queue:
@@ -160,11 +163,10 @@ class MG1:
 
         updated_priority = False
         for job in self.job_queue:
-            old_priority = job.priority
-            job.priority = job.job_class.priority(job.remaining_time, job.service_time,
-                                                  self.current_time - job.arrival_time)
-            if not math.isclose(old_priority, job.priority):
+            new_priority = job.current_priority(self.current_time)
+            if not math.isclose(new_priority, job.priority):
                 updated_priority = True
+                job.priority = new_priority
        
         if updated_priority:
             heapq.heapify(self.job_queue)
