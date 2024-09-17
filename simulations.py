@@ -38,8 +38,7 @@ class JobClass:
         self.b = None
 
     def generate_next_job(self, current_time):
-        return Job(current_time + random.expovariate(self.l),
-                    self.generate_service_time(), self)
+        return Job(current_time + random.expovariate(self.l), self.generate_service_time(), self)
 
 class MG1:
     def __init__(self, job_classes, policy):
@@ -205,6 +204,7 @@ class MG1:
         
         preemption_event = None
         
+        # calculate what the system currently considers the earliest preemption into preemption_event
         if new_job:
             # if a higher b job just arrived, it may preempt the low b job if it hasn't completed service
             t_overtake = self.calculate_overtake_time(new_job)
@@ -223,15 +223,18 @@ class MG1:
                 next_preemption_time = min(overtake_times)
                 preemption_event = Event('PreemptionCheck', next_preemption_time)
 
+        # if found a preemption and it's better than current_preemption_event, update current_preemption_event 
         if preemption_event:
             if self.current_preemption_event and self.current_preemption_event in self.event_queue:
                 if self.current_preemption_event.time > preemption_event.time:
                     self.event_queue.remove(self.current_preemption_event)
                     heapq.heapify(self.event_queue)
-                else:
-                    return 
-            self.current_preemption_event = preemption_event
-            heapq.heappush(self.event_queue, self.current_preemption_event)
+                    
+                    self.current_preemption_event = preemption_event
+                    heapq.heappush(self.event_queue, self.current_preemption_event)
+            else:
+                self.current_preemption_event = preemption_event
+                heapq.heappush(self.event_queue, self.current_preemption_event)
             
         
     def record_metrics(self, job, departure_time):
