@@ -45,14 +45,17 @@ class MG1:
         # Parameters
         self.job_classes = job_classes
         self.policy = policy    
-        self.simulation_time = 10**5
-        self.inspection_rate = .1
+        self.simulation_time = 10**6
+        self.inspection_rate = .001
         
         # initialize priority_function of job classes
-        for job_class in job_classes:
+        for k, job_class in enumerate(job_classes):
             if policy.priority_fn == None:
                 job_class.priority = lambda r, s, t, idx=job_class.index: -idx
                 job_class.b = 0
+            elif type(policy.priority_fn) is list:
+                job_class.priority = policy.priority_fn[k]
+                job_class.b = job_class.priority(0, 0, 1) - job_class.priority(0, 0, 0)
             else:
                 job_class.priority = lambda r, s, t, idx=job_class.index: policy.priority_fn(r, s, t, idx)
                 job_class.b = policy.priority_fn(0, 0, 1, job_class.index) - policy.priority_fn(0, 0, 0, job_class.index)
@@ -75,6 +78,7 @@ class MG1:
         for job_class in self.job_classes:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
+            print("job_class b", job_class.b, job_class.priority(0, 0, 1) - job_class.priority(0, 0, 0))
 
         heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
         
@@ -84,6 +88,8 @@ class MG1:
         while self.event_queue and self.current_time < self.simulation_time:
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
+            
+            print(event.time, event.event_type, event.job.job_class.b if event.job else None)
             
             if event.event_type == 'Arrival':           
                 self.handle_arrival(event)
@@ -135,7 +141,8 @@ class MG1:
 
                 for job in self.job_queue:
                     job_priority = job.current_priority(self.current_time)
-                    assert job_priority <= current_job_priority, "Not working on highest prio job" 
+                    assert job_priority <= current_job_priority, "Not working on highest prio job" + f"\
+                      {current_job_priority, job_priority, self.current_job.job_class.b, job.job_class.b}" 
             else:
                 for job in self.job_queue:
                     assert job.priority <= self.current_job.priority or job.arrival_time \
@@ -155,6 +162,8 @@ class MG1:
         
         self.current_departure_event = Event('Departure', departure_time, self.current_job)
         heapq.heappush(self.event_queue, self.current_departure_event)
+        
+        print(f"I'm starting work on {self.current_job.job_class.b, self.current_job.priority}")
         self.schedule_preemption_check() # if dynamic and preemptive
 
     def update_priorities(self):
@@ -218,6 +227,9 @@ class MG1:
                 t_overtake = self.calculate_overtake_time(job)
                 if t_overtake and t_overtake > self.current_time:
                     overtake_times.append(t_overtake)
+                    print("job in queue", job.job_class.b, "prio rn", job.current_priority(self.current_time), 
+                  "t_overtake", t_overtake, "prio at overtake", job.current_priority(t_overtake), 
+                  self.current_job.current_priority(t_overtake), "arrival time", job.arrival_time)
                     
             if overtake_times:
                 next_preemption_time = min(overtake_times)
@@ -235,8 +247,10 @@ class MG1:
             else:
                 self.current_preemption_event = preemption_event
                 heapq.heappush(self.event_queue, self.current_preemption_event)
+            print("I scheduled a preemption check at ", self.current_preemption_event.time)
+        else:
+            print("I found no preemption candidates")
             
-        
     def record_metrics(self, job, departure_time):
         job_metrics = {'job_class': job.job_class.index, 
                        'arrival_time': job.arrival_time,

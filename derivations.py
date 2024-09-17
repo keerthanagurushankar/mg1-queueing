@@ -20,6 +20,10 @@ def rv_sum(X1, X2):
     EX = X1[1] + X2[1]
     EXsq = X1[2] + 2 * X1[1] * X2[1] + X2[2]
     return [1, EX, EXsq]
+    
+def scale_rv(c, X):
+    # returns (moments of) c X where c is a constant
+    return [c**k * Xk for k, Xk in enumerate(X)]
 
 ## MG1 Formulas
 
@@ -84,10 +88,6 @@ class MG1:
         Sx = lambda x : [S for S in S_samples if S <= x]
         Resx = lambda x : x/(1-self.l*np.mean(Sx(x)))
         pass
-
-    def T_FB(self):
-        
-        pass
     
     def T_SRPT(self):
         if self.S_gen is None:
@@ -102,7 +102,7 @@ class MG1:
 
         eps = 0.05
         xs = np.arange(0, 1, eps)        
-        #rhoxs = [rhox(x) for x in xs]
+        #rhoxs = [rhox(x) for x in xs] # TODO: memoize rhoxs
         EResx = lambda x: np.sum([eps/(1-rhox(t)) for t in np.arange(0, x, eps)])
         ET = np.mean([EWaitx(S) + EResx(S) for S in S_samples])
         return [1, ET]
@@ -115,13 +115,13 @@ class MG1:
     
 class TwoClassMG1:
     def __init__(self, l1, l2, S1, S2):
-        # requires at least 3 moments of S1, S2
         self.l1 = l1
         self.l2 = l2
         self.S1 = S1
         self.S2 = S2
         self.S1e = excess(S1)
         self.S2e = excess(S2)
+        assert len(S1) >= 4 and len(S2) >= 4, "requires first 3 moments of S1, S2"        
         
         self.rho1 = l1 * S1[1]
         self.rho2 = l2 * S2[1]
@@ -130,9 +130,9 @@ class TwoClassMG1:
         self.Se = excess(self.S)
         assert self.rho < 1, "Load must be less than 1"
 
-        EW = self.rho / (1-self.rho) * self.Se[1]
-        EWsq = 2 * EW**2 + self.rho / (1-self.rho) * self.Se[2]
-        self.W = [1, EW, EWsq]
+        self.MG1 = MG1(l1 + l2, self.S)
+        self.W = self.MG1.W
+        self.W_pos = self.MG1.BP.W()
 
     def T_FCFS(self):
         T1 = rv_sum(self.W, self.S1)
@@ -171,21 +171,28 @@ class TwoClassMG1:
         return T1, T2
 
     def T_NPAccPrio(self, b1, b2):
+        assert b1 >= b2, "Assume class 1 is higher priority"    
+        
         # lA = (1-b2/b1)*l1
         # AI0 = BP[S, lA, S1], AI1 = BP[SuA, lA, S1], BP = BP[AI0, l2 + b2/b1*l1, AI1]
-        # TA, TuA = MG1(lA, l-lA, S1, SuA).T_NPPrio12()
-        # VuA = b2 * T2 = b2 * TuA = b1 * T1uA
-        # T1 = two_case_rv(1-b2/b1, b2/b1, TA, b2/b1 * TuA)
-        lA = (1-b2/b1)*self.l1
-        AI0 = BP(self.S, lA, self.S1)
-        SuA = two_case_rv(self.l1/b1, self.l2/b2, self.S1, self.S2)
-        AI1 = BP(SuA, lA, self.S1)
-        p0 = (1-self.rho) / (1- lA * self.S1[1])
-        TQAp = two_case_rv(p0, 1-p0, AI0.W(), AI1.W())
-        TuAp = None
-        TQ1p = two_case_rv(1-b2/b1, b2/b1, TQAp, b2/b1 * TuAp)
-        TQ1p = two_case_rv(1-self.rho, self.rho, [1, 0, 0], TQ1p)
-        pass
+        l_acc = (1 - b2/b1) * self.l1
+        AI0 = BP(self.S, l_acc, self.S1)
+        S_unacc = two_case_rv(self.l1/b1, self.l2/b2, self.S1, self.S2)
+        AI1 = BP(S_unacc, l_acc, self.S1)
+        
+        p0 = (1 - self.rho) / (1- l_acc * self.S1[1]) # pr[entering AI0 | entering BP]
+        TQ1_acc = two_case_rv(p0, 1-p0, AI0.W(), AI1.W()) # TQ of acc job
+        
+        # TQ2 = length of BP[W, l_acc, S1]
+        TQ2_pos = BP(self.W_pos, l_acc, self.S1).BP_length()
+        TQ2 = two_case_rv(1-self.rho, self.rho, [1, 0, 0], TQ2_pos)
+        
+        TQ1_unacc_pos = scale_rv(b2/b1, TQ2_pos) # b1 * TQ1_unacc = b2 * TQ2 = V_unacc
+        TQ1_pos = two_case_rv(1 - b2/b1, b2/b1, TQ1_acc, TQ1_unacc_pos)
+        TQ1 = two_case_rv(1-self.rho, self.rho, [1, 0, 0], TQ1_pos)
+        
+        T1, T2 = rv_sum(TQ1, self.S1), rv_sum(TQ2, self.S2)
+        return T1, T2
 
     def T_ASHybrid(self, p):
         Ta, Tb = self.T_PPrio12()
@@ -206,8 +213,9 @@ class TwoClassMG1:
             return self.T_FCFS()
         elif policy_name[0] == "ASH":
             return self.T_ASHybrid(policy_name[2])
-        elif policy_name == "NPAccPrio":
-            return self.T_NPPrio12()
+        elif policy_name[0] == "NPAccPrio":
+            b1, b2 = policy_name[1:]
+            return self.T_NPAccPrio(b1, b2)
         else:
             return None
             

@@ -86,8 +86,8 @@ if __name__ == "__main__":
     NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) # close to NPPrio12
     #run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
     #run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
-    run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
-                         lib.hyperexponential(mu2, Csq=5), NPAccPrio)
+    #run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+           #              lib.hyperexponential(mu2, Csq=5), NPAccPrio)
     b1, b2 = 1, 1 # should be FCFS
 
     print("**2 CLASS P-ACC-PRIO TESTS**")
