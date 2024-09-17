@@ -92,7 +92,6 @@ class MG1:
     def T_SRPT(self):
         if self.S_gen is None:
             raise Exception("Need job size generator to compute T_SRPT")
-        print("FCFS", self.T_FCFS())
         
         S_samples = [self.S_gen() for _ in range(4 * 10**3)]
         Sxbar_samples = lambda x: [S if  S < x else x for S in S_samples]
@@ -177,7 +176,15 @@ class TwoClassMG1:
         # TA, TuA = MG1(lA, l-lA, S1, SuA).T_NPPrio12()
         # VuA = b2 * T2 = b2 * TuA = b1 * T1uA
         # T1 = two_case_rv(1-b2/b1, b2/b1, TA, b2/b1 * TuA)
-
+        lA = (1-b2/b1)*self.l1
+        AI0 = BP(self.S, lA, self.S1)
+        SuA = two_case_rv(self.l1/b1, self.l2/b2, self.S1, self.S2)
+        AI1 = BP(SuA, lA, self.S1)
+        p0 = (1-self.rho) / (1- lA * self.S1[1])
+        TQAp = two_case_rv(p0, 1-p0, AI0.W(), AI1.W())
+        TuAp = None
+        TQ1p = two_case_rv(1-b2/b1, b2/b1, TQAp, b2/b1 * TuAp)
+        TQ1p = two_case_rv(1-self.rho, self.rho, [1, 0, 0], TQ1p)
         pass
 
     def T_ASHybrid(self, p):
@@ -234,6 +241,6 @@ def plot_ETsq(plot_title, S1_gen, S2_gen):
 if __name__ == "__main__":
     mu1, mu2 = 2, 1
     
-    plot_ETsq("Hyperexponential", lib.hyperexponential(mu1, 1), lib.hyperexponential(mu2, 10))
+    plot_ETsq("Hyperexponential", lib.hyperexponential(mu1, 100), lib.hyperexponential(mu2, 100))
     plot_ETsq("Exponential", lambda:random.expovariate(mu1), lambda:random.expovariate(mu2))
     

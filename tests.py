@@ -54,68 +54,54 @@ def run_2Class_MG1_tests(test_label, l1, l2, S1, S2, policy):
     print_test(test_label+" Class 1 var", empirical_VarT1, VarT1)
     print_test(test_label+" Class 2 mean", empirical_ET2, ET2)
     print_test(test_label+" Class 2 var", empirical_VarT2, VarT2)
-    
-def run_NPAccPrio_FCFS_tests(test_label, l1, l2, S1, S2):
-    simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1, lambda x:x[2]),
-                                     simulations.JobClass(2, l2, S2, lambda x:x[2])],
-                                    is_dynamic_priority = True)
-    theoretical_MG1 = derivations.TwoClassMG1(l1, l2,
-                                              lib.moments_from_sample_gen(S1),
-                                              lib.moments_from_sample_gen(S2))
-    run_2Class_MG1_tests(test_label+" FCFS", simulated_MG1, theoretical_MG1.T_FCFS())
-
 
 if __name__ == "__main__":
     print("**MG1 FCFS TESTS**")
-    l, mu = 1, 3
-    # run_MG1_tests("MM1", l, lib.exp(mu))
-    # run_MG1_tests("MD1", l, lib.det(mu))
-    # run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
-    # run_MG1_tests("MPar1",l,lib.pareto(mu))
-
-    # l, mu = 2, 3
-    # run_MG1_tests("MM1", l, lib.exp(mu))
-    # run_MG1_tests("MD1", l, lib.det(mu))
-    # run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
-    # run_MG1_tests("MPar1",l,lib.pareto(mu))
+    l, mu = 2, 3
+    run_MG1_tests("MM1", l, lib.exp(mu))
+    run_MG1_tests("MD1", l, lib.det(mu))
+    run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
+    run_MG1_tests("MPar1",l,lib.pareto(mu))
 
     print("**2 CLASS NPPRIO TESTS**")
     l1, l2, mu1, mu2 = 4, 0.3, 10, 1
-    # run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMD1b", l2, l1, lib.det(mu2), lib.det(mu1), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMH1a", l1, l2, lib.hyperexponential(mu1, Csq=5),
-    #                      lib.hyperexponential(mu2, Csq=10), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMD1b", l2, l1, lib.det(mu2), lib.det(mu1), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMH1a", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                         lib.hyperexponential(mu2, Csq=10), policy.NPPrio12)
 
 
     print("**2 CLASS PPRIO TESTS**")
-    # run_2Class_MG1_tests("2cMM1c", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.PPrio12)
-    # run_2Class_MG1_tests("2cMM1d", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.PPrio12)
-    # run_2Class_MG1_tests("2cMD1c", l1, l2, lib.det(mu1), lib.det(mu2), policy.PPrio12)
-    #run_2Class_MG1_tests("2cMH1c", l1, l2, lib.hyperexponential(mu1, Csq=5),
-     #                     lib.hyperexponential(mu2, Csq=5), policy.PPrio12)
-    # run_2Class_MG1_tests("2cMH1d", l1, l2, lib.hyperexponential(mu1, Csq=10),
-    #                      lib.hyperexponential(mu2, Csq=10), policy.PPrio12)
-    
+    run_2Class_MG1_tests("2cMM1c", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.PPrio12)
+    run_2Class_MG1_tests("2cMM1d", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.PPrio12)
+    run_2Class_MG1_tests("2cMD1c", l1, l2, lib.det(mu1), lib.det(mu2), policy.PPrio12)
+    run_2Class_MG1_tests("2cMH1c", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                         lib.hyperexponential(mu2, Csq=5), policy.PPrio12)
+    run_2Class_MG1_tests("2cMH1d", l1, l2, lib.hyperexponential(mu1, Csq=10),
+                         lib.hyperexponential(mu2, Csq=10), policy.PPrio12)
     
     print("**2 CLASS NP-ACC-PRIO TESTS**")
-    NPAccPrio = policy.AccPrio(b1 = 100, b2 = 1, is_preemptive = False) # close to NPPrio12
-    # run_2Class_MG1_tests("2cMM1NPacc100", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
-    # run_2Class_MG1_tests("2cMD1NPacc100", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
-    # run_2Class_MG1_tests("2cMH1NPacc100", l1, l2, lib.hyperexponential(mu1, Csq=5),
-    #                      lib.hyperexponential(mu2, Csq=5), NPAccPrio)
-    # b1, b2 = 1, 1 # should be FCFS
+    NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) # close to NPPrio12
+    run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
+    run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
+    run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                         lib.hyperexponential(mu2, Csq=5), NPAccPrio)
+    b1, b2 = 1, 1 # should be FCFS
 
     print("**2 CLASS P-ACC-PRIO TESTS**")
     PAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = True)
-    run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)    
+    run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
+    run_2Class_MG1_tests("2cMD1Pacc", l1, l2, lib.det(mu1), lib.det(mu2), PAccPrio)
+    run_2Class_MG1_tests("2cMH1Pacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                         lib.hyperexponential(mu2, Csq=5), PAccPrio)    
 
     print("**SRPT TESTS**")
     l, mu = 7, 10
     run_MG1_tests("SRPT MM1", l, lib.exp(mu), policy.SRPT)    
-    # run_MG1_tests("SRPT MD1", l, lib.det(mu), policy.SRPT)
-    # run_MG1_tests("SRPT MH1 Csq10", l, lib.hyperexponential(mu, Csq=10), policy.SRPT)
-    # run_MG1_tests("SRPT MH1 Csq50", l, lib.hyperexponential(mu, Csq=50), policy.SRPT)    
+    run_MG1_tests("SRPT MD1", l, lib.det(mu), policy.SRPT)
+    run_MG1_tests("SRPT MH1 Csq10", l, lib.hyperexponential(mu, Csq=10), policy.SRPT)
+    run_MG1_tests("SRPT MH1 Csq50", l, lib.hyperexponential(mu, Csq=50), policy.SRPT)    
     run_MG1_tests("SRPT MH1 Csq100", l, lib.hyperexponential(mu, Csq=100), policy.SRPT)
-    # run_MG1_tests("SRPT MPar1", l, lib.pareto(mu), policy.SRPT)
+    run_MG1_tests("SRPT MPar1", l, lib.pareto(mu), policy.SRPT)
