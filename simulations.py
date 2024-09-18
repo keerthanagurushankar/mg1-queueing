@@ -60,7 +60,7 @@ class MG1:
         self.job_classes = job_classes
         self.policy = policy
         
-        self.simulation_time = 2*10**5
+        self.simulation_time = 10**5
         self.inspection_rate = 0.001
         self.preemption_delay = 0.001 # slight delay preemption check for priority overtake
         
@@ -93,7 +93,7 @@ class MG1:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
 
-        heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
+        #heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
         
     def run(self):
         self.initialize()
@@ -262,7 +262,8 @@ class MG1:
                        'job_size': job.service_time,
                        'departure_time': departure_time,                       
                        'response_time': departure_time - job.arrival_time,
-                       'waiting_time': departure_time - job.arrival_time - job.service_time,
+                       'waiting_time': departure_time - job.arrival_time
+                           - job.service_time,
                        'priority': job.priority} # at completion
         self.metrics.append(job_metrics)
 
@@ -272,8 +273,10 @@ class MG1:
             json.dump(self.metrics, f)
             
         for job_class in self.job_classes:
-            arrival_sequence = [job for job in self.metrics if job['job_class'] == job_class.index]
-            with open(os.path.join(path, f"arrival_sequence{job_class.index}.json"), 'w') as f:
+            arrival_sequence = [job for job in self.metrics
+                                if job['job_class'] == job_class.index]
+            fname = os.path.join(path, f"arrival_sequence{job_class.index}.json")
+            with open(fname, 'w') as f:
                 json.dump(arrival_sequence, f)
         
         logging.info(f"Saved metrics to {path}")
