@@ -1,0 +1,5 @@
+numpy
+matplotlib
+termcolor
+logging
+PyQt6

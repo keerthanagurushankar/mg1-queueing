@@ -244,11 +244,12 @@ def plot_ETsq(plot_title, S1_gen, S2_gen):
     plt.ylabel("ETsq")
     plt.title(plot_title)
     plt.legend()
+    plt.savefig(plot_title+'.png')
     plt.show()
 
 if __name__ == "__main__":
-    mu1, mu2 = 2, 1
+    mu1, mu2 = 3, 2
     
-    plot_ETsq("Hyperexponential", lib.hyperexponential(mu1, 100), lib.hyperexponential(mu2, 100))
-    plot_ETsq("Exponential", lambda:random.expovariate(mu1), lambda:random.expovariate(mu2))
+    plot_ETsq(f"{mu1, mu2}-Hyperexp(1,10)", lib.hyperexponential(mu1, 1), lib.hyperexponential(mu2, 10))
+    plot_ETsq(f"{mu1, mu2}-Exponential", lambda:random.expovariate(mu1), lambda:random.expovariate(mu2))
     
