@@ -64,7 +64,7 @@ if __name__ == "__main__":
     run_MG1_tests("MPar1",l,lib.pareto(mu))
 
     print("**2 CLASS NPPRIO TESTS**")
-    l1, l2, mu1, mu2 = 4, 0.3, 10, 1
+    l1, l2, mu1, mu2 = .4, .3, 2, 1
     run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
     run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
     run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)

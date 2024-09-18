@@ -1,7 +1,10 @@
 import heapq
-import random, math
-import numpy as np
+import random, math, numpy as np
+import json, os
 import lib
+
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class Event:
     def __init__(self, event_type, time, job=None):
@@ -21,32 +24,45 @@ class Job:
         self.priority = job_class.priority(self.remaining_time, self.service_time, 0)
 
     def __lt__(self, other):
-        if self.priority == other.priority: # isclose?
-            return self.arrival_time < other.arrival_time # older is better within class
+        if self.priority == other.priority: 
+            return self.arrival_time < other.arrival_time # older is better if unspecified
         return self.priority > other.priority # higher priority is better
 
     def current_priority(self, current_time):
         return self.job_class.priority(self.remaining_time, self.service_time,
-                                                current_time - self.arrival_time)
+                                        current_time - self.arrival_time)
 
 class JobClass:
-    def __init__(self, index, l, S): 
+    def __init__(self, index, l, S, path=None): 
         self.index = index
         self.l = l
-        self.generate_service_time = S
+        self.S = S
         self.priority = None
         self.b = None
+        
+        self.arrival_sequence = None
+        if path:
+            with open(f'{path}/arrival_sequence{index}.json', 'r') as f:
+                self.arrival_sequence = json.load(f)
+                self.sequence_index = -1
 
     def generate_next_job(self, current_time):
-        return Job(current_time + random.expovariate(self.l), self.generate_service_time(), self)
+        if self.arrival_sequence and self.sequence_index < len(self.arrival_sequence)-1:
+            self.sequence_index += 1
+            return Job(self.arrival_sequence[self.sequence_index]['arrival_time'],
+                       self.arrival_sequence[self.sequence_index]['job_size'], self)
+
+        return Job(current_time + random.expovariate(self.l), self.S(), self)
 
 class MG1:
     def __init__(self, job_classes, policy):
         # Parameters
         self.job_classes = job_classes
-        self.policy = policy    
-        self.simulation_time = 10**6
-        self.inspection_rate = .001
+        self.policy = policy
+        
+        self.simulation_time = 2*10**5
+        self.inspection_rate = 0.001
+        self.preemption_delay = 0.001 # slight delay preemption check for priority overtake
         
         # initialize priority_function of job classes
         for k, job_class in enumerate(job_classes):
@@ -59,8 +75,6 @@ class MG1:
             else:
                 job_class.priority = lambda r, s, t, idx=job_class.index: policy.priority_fn(r, s, t, idx)
                 job_class.b = policy.priority_fn(0, 0, 1, job_class.index) - policy.priority_fn(0, 0, 0, job_class.index)
-                if job_class.b > 0:
-                    job_class.priority = lambda r, s, t: job_class.b * t
 
         # System state
         self.event_queue = [] # holds events in order of event time
@@ -78,7 +92,6 @@ class MG1:
         for job_class in self.job_classes:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
-            print("job_class b", job_class.b, job_class.priority(0, 0, 1) - job_class.priority(0, 0, 0))
 
         heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
         
@@ -89,9 +102,9 @@ class MG1:
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
             
-            print(event.time, event.event_type, event.job.job_class.b if event.job else None)
+            logging.debug(f"EVENT: {event.time, event.event_type, event.job.job_class.index if event.job else None}")
             
-            if event.event_type == 'Arrival':           
+            if event.event_type == 'Arrival':
                 self.handle_arrival(event)
             elif event.event_type == 'Departure':                  
                 self.handle_departure(event)
@@ -141,7 +154,7 @@ class MG1:
 
                 for job in self.job_queue:
                     job_priority = job.current_priority(self.current_time)
-                    assert job_priority <= current_job_priority, "Not working on highest prio job" + f"\
+                    assert job_priority <= current_job_priority + 10*self.preemption_delay, "Not working on highest prio job" + f"\
                       {current_job_priority, job_priority, self.current_job.job_class.b, job.job_class.b}" 
             else:
                 for job in self.job_queue:
@@ -163,7 +176,7 @@ class MG1:
         self.current_departure_event = Event('Departure', departure_time, self.current_job)
         heapq.heappush(self.event_queue, self.current_departure_event)
         
-        print(f"I'm starting work on {self.current_job.job_class.b, self.current_job.priority}")
+        logging.debug(f"I'm starting work on {self.current_job.job_class.index, self.current_job.priority} at {self.current_time}")
         self.schedule_preemption_check() # if dynamic and preemptive
 
     def update_priorities(self):
@@ -204,7 +217,7 @@ class MG1:
             return None
 
         t_overtake = (b_queue*queue_job.arrival_time - b_curr*self.current_job.arrival_time) / (b_queue-b_curr)
-        return t_overtake
+        return t_overtake + self.preemption_delay
 
     def schedule_preemption_check(self, new_job = None):
         # check if new arrival or some job in queue may preempt the current service
@@ -217,23 +230,18 @@ class MG1:
         if new_job:
             # if a higher b job just arrived, it may preempt the low b job if it hasn't completed service
             t_overtake = self.calculate_overtake_time(new_job)
-            if t_overtake: # and t_overtake < self.current_time + self.current_job.remaining_time:
-                assert t_overtake > self.current_time, "should have already overtaken"
-                preemption_event = Event('PreemptionCheck', t_overtake, new_job)
+            if t_overtake: # and t_overtake < self.current_departure_event.time:
+                preemption_event = Event('PreemptionCheck', t_overtake, new_job)             
         else:
             # when starting new service, check and schedule if any job in queue may grow to overtake priority
-            overtake_times = []
+            min_overtake_time, overtake_job = float('inf'), None
             for job in self.job_queue:
                 t_overtake = self.calculate_overtake_time(job)
-                if t_overtake and t_overtake > self.current_time:
-                    overtake_times.append(t_overtake)
-                    print("job in queue", job.job_class.b, "prio rn", job.current_priority(self.current_time), 
-                  "t_overtake", t_overtake, "prio at overtake", job.current_priority(t_overtake), 
-                  self.current_job.current_priority(t_overtake), "arrival time", job.arrival_time)
+                if t_overtake and t_overtake < min_overtake_time:
+                    min_overtake_time, overtake_job = t_overtake, job
                     
-            if overtake_times:
-                next_preemption_time = min(overtake_times)
-                preemption_event = Event('PreemptionCheck', next_preemption_time)
+            if overtake_job:
+                preemption_event = Event('PreemptionCheck', min_overtake_time, overtake_job)
 
         # if found a preemption and it's better than current_preemption_event, update current_preemption_event 
         if preemption_event:
@@ -247,17 +255,25 @@ class MG1:
             else:
                 self.current_preemption_event = preemption_event
                 heapq.heappush(self.event_queue, self.current_preemption_event)
-            print("I scheduled a preemption check at ", self.current_preemption_event.time)
-        else:
-            print("I found no preemption candidates")
             
     def record_metrics(self, job, departure_time):
         job_metrics = {'job_class': job.job_class.index, 
                        'arrival_time': job.arrival_time,
-                       'departure_time': departure_time,
                        'job_size': job.service_time,
+                       'departure_time': departure_time,                       
                        'response_time': departure_time - job.arrival_time,
                        'waiting_time': departure_time - job.arrival_time - job.service_time,
                        'priority': job.priority} # at completion
-        #print(job_metrics)
         self.metrics.append(job_metrics)
+
+    def save_metrics(self, path):
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, "metrics.json"), 'w') as f:
+            json.dump(self.metrics, f)
+            
+        for job_class in self.job_classes:
+            arrival_sequence = [job for job in self.metrics if job['job_class'] == job_class.index]
+            with open(os.path.join(path, f"arrival_sequence{job_class.index}.json"), 'w') as f:
+                json.dump(arrival_sequence, f)
+        
+        logging.info(f"Saved metrics to {path}")
