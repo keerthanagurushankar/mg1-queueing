@@ -142,12 +142,10 @@ class TwoClassMG1:
     def T_PPrio12(self):
         T1 = MG1(self.l1, self.S1).T_FCFS()
 
-        # W0 = W + S2; T2 = length of BP[W0, l1, S1]
-        W0 = rv_sum(self.W, self.S2)
-        Class1_BP = BP(W0, self.l1, self.S1)
+        # T2 = length of BP[W + S2, l1, S1]
+        Class1_BP = BP(rv_sum(self.W, self.S2), self.l1, self.S1)
         T2 = Class1_BP.BP_length()
 
-        T = two_case_rv(self.l1, self.l2, T1, T2)
         return T1, T2
 
     def T_NPPrio12(self):
@@ -192,7 +190,7 @@ class TwoClassMG1:
         TQ1 = two_case_rv(1-self.rho, self.rho, [1, 0, 0], TQ1_pos)
         
         T1, T2 = rv_sum(TQ1, self.S1), rv_sum(TQ2, self.S2)
-        return T1, T2
+        return T1, T2 # T1 is wrong, T2 is right (matches simulation)
 
     def T_ASHybrid(self, p):
         Ta, Tb = self.T_PPrio12()
