@@ -4,6 +4,7 @@ import lib, simulations, policies as policy
 import json
 
 def save_sample_path(l1, l2, S1, S2, b1, b2, dname):
+    # run a PAccPrio simulation and save metrics to dname (we only use arrival seqs)
     PAccPrio = policy.AccPrio(b1, b2, is_preemptive = True)
     simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1), 
                                      simulations.JobClass(2, l2, S2)], PAccPrio)
@@ -11,6 +12,7 @@ def save_sample_path(l1, l2, S1, S2, b1, b2, dname):
     simulated_MG1.save_metrics(dname)    
 
 def run_PAccPrio(l1, l2, S1, S2, b1, b2, dname=None):
+    # run a PAccPrio sim (from dname if given) and return ETsq
     PAccPrio = policy.AccPrio(b1, b2, is_preemptive = True)
     simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1, dname), 
                                      simulations.JobClass(2, l2, S2, dname)], PAccPrio)
@@ -44,12 +46,16 @@ def plot_b1_vs_ETsq(dname, l1, l2, mu1, mu2, b1_max=15, from_file=False):
     plt.xscale('log')
     plt.xlabel('$b_1$')
     plt.ylabel('$E[T^2]$')
-    plt.title(f'Acc. Priority: λ1 = λ2 = {l1}, μ1={mu1}, μ2={mu2}, b2=1')
+    plt.title(f'Acc. Priority: Csq = 10, λ1 = λ2 = {l1}, μ1={mu1}, μ2={mu2}, b2=1')
     plt.savefig(f'{dname}/b1-vs-ETsq.png')
+
+def plot_best_b1s(l, mu2):
+    for mu1 in [3.5, 4, 5]:
+        assert l/mu1 + l/mu2 < 1, "Load must be less than 1"
+        S1, S2 = lib.hyperexponential(mu1, Csq=10), lib.hyperexponential(mu2, Csq=10) 
+        plot_b1_vs_ETsq(f'sample_paths/MH101-{l}-{mu1}-{mu2}', l, l, mu1, mu2,
+                        from_file=False)    
     
 if __name__ == "__main__":
-    l, mu2 = 1, 1.5
-    for mu1 in [3]:
-        S1, S2 = lib.exp(mu1), lib.exp(mu2) 
-        plot_b1_vs_ETsq(f'sample_paths/MM1-{l}-{mu1}-{mu2}', l, l, mu1, mu2, from_file=False)
+    # plot_best_b1s(1, 1.5)
     plt.show()
