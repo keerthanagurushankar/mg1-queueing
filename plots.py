@@ -20,6 +20,16 @@ def run_PAccPrio(l1, l2, S1, S2, b1, b2, dname=None):
     response_times = [job['response_time'] for job in simulated_MG1.metrics]
     response_times_sq = [t**2 for t in response_times]
     return np.mean(response_times_sq)
+
+def run_Lookahead(l1, l2, S1, S2, alpha, d, dname=None):
+    # run a Lookahead sim and return tail
+    simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1, dname), 
+                                     simulations.JobClass(2, l2, S2, dname)],
+                                     policy.Lookahead(alpha))
+    simulated_MG1.run()
+    response_times = [job['response_time'] for job in simulated_MG1.metrics]
+    response_times_tail = [1 if t > d else 0 for t in response_times]
+    return np.mean(response_times_tail)
     
 def plot_b1_vs_ETsq(dname, l1, l2, mu1, mu2, b1_max=15, from_file=False):
     # for given (l1, l2, S1, S2) whose arrival seq is stored in dname/arrival_sequence{i}.json
@@ -51,33 +61,16 @@ def plot_b1_vs_ETsq(dname, l1, l2, mu1, mu2, b1_max=15, from_file=False):
     plt.title(f'Acc. Priority: Csq = 10, λ1 = λ2 = {l1}, μ1={mu1}, μ2={mu2}, b2=1')
     plt.savefig(f'{dname}/b1-vs-ETsq.png')
 
-def plot_best_b1s(l, mu2):
-    for mu1 in [3.5, 4, 5]:
-        assert l/mu1 + l/mu2 < 1, "Load must be less than 1"
-        S1, S2 = lib.hyperexponential(mu1, Csq=10), lib.hyperexponential(mu2, Csq=10) 
-        plot_b1_vs_ETsq(f'sample_paths/MH101-{l}-{mu1}-{mu2}', l, l, mu1, mu2,
-                        from_file=False)   
-
-
-def run_Lookahead(l1, l2, S1, S2, alpha, dname=None):
-    simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1, dname), 
-                                     simulations.JobClass(2, l2, S2, dname)],
-                                     policy.Lookahead(alpha))
-    simulated_MG1.run()
-    response_times = [job['response_time'] for job in simulated_MG1.metrics]
-    response_times_tail = [1 if t > 10 else 0 for t in response_times]
-    return np.mean(response_times_tail)
-
-def plot_alpha_vs_tail(dname, l1, l2, mu1, mu2, d=15, from_file=False):
+def plot_alpha_vs_tail(dname, l1, l2, mu1, mu2, d=10, from_file=False):
     # for given (l1, l2, S1, S2) whose arrival seq is stored in dname/arrival_sequence{i}.json
-    # plot alpha -> Pr[T>d] under policy P-Acc-Prio (b1, b2=1) and save figure
+    # and deadline d, plot alpha -> Pr[T>d] under policy Lookahead(alpha) and save figure
     if not from_file:
         S1, S2 = lib.exp(mu1), lib.exp(mu2)
         #save_sample_path(l1, l2, S1, S2, 1, 1, dname)
         alphas, tails = [], []
         
-        for alpha in range(d+2):
-            tail = run_Lookahead(l1, l2, S1, S2, alpha, dname)
+        for alpha in range(3 * d // 2):
+            tail = run_Lookahead(l1, l2, S1, S2, alpha, d, dname)
             print(f"Ran computations for {alpha}, {alpha} -> {tail}")
             alphas.append(alpha)
             tails.append(tail)
@@ -95,11 +88,18 @@ def plot_alpha_vs_tail(dname, l1, l2, mu1, mu2, d=15, from_file=False):
     plt.title(f'Lookahead, λ1 = λ2 = {l1}, μ1={mu1}, μ2={mu2}')
     plt.savefig(f'{dname}/alpha-vs-tails.png')
 
-def plot_best_alphas(l, mu2):
+def plot_best_PAccPrio(l, mu2):
+    for mu1 in [3.5, 4, 5]:
+        assert l/mu1 + l/mu2 < 1, "Load must be less than 1"
+        plot_b1_vs_ETsq(f'sample_paths/MH101-{l}-{mu1}-{mu2}', l, l, mu1, mu2,
+                        from_file=False)   
+    
+def plot_best_Lookahead(l, mu2):
     for mu1 in [4]:
+        assert l/mu1 + l/mu2 < 1, "Load must be less than 1"        
         plot_alpha_vs_tail(f'sample_paths/MM1-{l}-{mu1}-{mu2}', l, l, mu1, mu2)
         
 if __name__ == "__main__":
-    # plot_best_b1s(1, 1.5)
-    plot_best_alphas(1, 1.5)
+    # plot_best_PAccPrio(1, 1.5)
+    plot_best_Lookahead(1, 1.5)
     plt.show()
