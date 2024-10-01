@@ -198,6 +198,10 @@ class TwoClassMG1:
         T2 = two_case_rv(p, 1-p, Ta, Tb)
         return T1, T2
 
+    def T_Lookahead(self, alpha):
+        return None
+        pass
+
     def T_timeavg(self, T12):
         T1, T2 = T12
         return two_case_rv(self.l1, self.l2, T1, T2)
@@ -214,6 +218,9 @@ class TwoClassMG1:
         elif policy_name[0] == "NPAccPrio":
             b1, b2 = policy_name[1:]
             return self.T_NPAccPrio(b1, b2)
+        elif policy_name[0] == "Lookahead":
+            alpha = policy_name[1]
+            return self.T_Lookahead(alpha)
         else:
             return None
             
@@ -246,8 +253,8 @@ def plot_ETsq(plot_title, S1_gen, S2_gen):
     plt.show()
 
 if __name__ == "__main__":
-    mu1, mu2 = 3, 2
+    mu1, mu2 = 40, 2
     
-    plot_ETsq(f"{mu1, mu2}-Hyperexp(1,10)", lib.hyperexponential(mu1, 1), lib.hyperexponential(mu2, 10))
+    plot_ETsq(f"{mu1, mu2}-Hyperexp(10)", lib.hyperexponential(mu1, 10), lib.hyperexponential(mu2, 10))
     plot_ETsq(f"{mu1, mu2}-Exponential", lambda:random.expovariate(mu1), lambda:random.expovariate(mu2))
     

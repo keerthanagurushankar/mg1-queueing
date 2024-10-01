@@ -61,7 +61,7 @@ class MG1:
         self.policy = policy
         
         self.simulation_time = 10**5
-        self.inspection_rate = 0.001
+        self.inspection_rate = 1
         self.preemption_delay = 0.001 # slight delay preemption check for priority overtake
         
         # initialize priority_function of job classes
@@ -72,6 +72,7 @@ class MG1:
             elif type(policy.priority_fn) is list:
                 job_class.priority = policy.priority_fn[k]
                 job_class.b = job_class.priority(0, 0, 1) - job_class.priority(0, 0, 0)
+                job_class.a = job_class.priority(0, 0, 0)
             else:
                 job_class.priority = lambda r, s, t, idx=job_class.index: policy.priority_fn(r, s, t, idx)
                 job_class.b = policy.priority_fn(0, 0, 1, job_class.index) - policy.priority_fn(0, 0, 0, job_class.index)
@@ -216,9 +217,12 @@ class MG1:
         if b_queue <= b_curr:
             return None
 
-        t_overtake = (b_queue*queue_job.arrival_time - b_curr*self.current_job.arrival_time) / (b_queue-b_curr)
+        a_curr, a_queue = self.current_job.job_class.a, queue_job.job_class.a
+        # a1 + b1 (t-t1) = a2 + b2 (t-t2)
+        # (b1 - b2) t = a2 - a1 + b1 t1 - b2 t2
+        t_overtake = (a_curr - a_queue + b_queue*queue_job.arrival_time - b_curr*self.current_job.arrival_time) / (b_queue-b_curr)
         return t_overtake + self.preemption_delay
-
+        
     def schedule_preemption_check(self, new_job = None):
         # check if new arrival or some job in queue may preempt the current service
         if not self.policy.is_dynamic_priority or not self.policy.is_preemptive:

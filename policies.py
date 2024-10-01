@@ -17,5 +17,12 @@ def AccPrio(b1, b2, is_preemptive=False):
     V1 = lambda r, s, t: b1 * t
     V2 = lambda r, s, t: b2 * t
     policy_name = "PAccPrio" if is_preemptive else "NPAccPrio"
-    return Policy((policy_name, b1, b2), priority_fn=[V1, V2], is_preemptive=is_preemptive,
+    return Policy((policy_name, b1, b2), priority_fn=[V1, V2],
+                  is_preemptive=is_preemptive,
                   is_dynamic_priority=True)
+
+def Lookahead(alpha):
+    V1 = lambda r, s, t: t
+    V2 = lambda r, s, t: alpha
+    return Policy(("Lookahead", alpha), priority_fn=[V1, V2],
+                  is_preemptive=True, is_dynamic_priority=True)
