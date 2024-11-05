@@ -64,7 +64,7 @@ if __name__ == "__main__":
     # run_MG1_tests("MPar1",l,lib.pareto(mu))
 
     # print("**2 CLASS NPPRIO TESTS**")
-    l1, l2, mu1, mu2 = .4, .3, 1, 2
+    l1, l2, mu1, mu2 = .4, .3, 1, 1.5
     # run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
     # run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
     # run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
 
     print("**2 CLASS PPRIO TESTS**")
-    #run_2Class_MG1_tests("2cMM1c", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.PPrio12)
+    run_2Class_MG1_tests("2cMM1c", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.PPrio12)
     # run_2Class_MG1_tests("2cMM1d", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.PPrio12)
     # run_2Class_MG1_tests("2cMD1c", l1, l2, lib.det(mu1), lib.det(mu2), policy.PPrio12)
     # run_2Class_MG1_tests("2cMH1c", l1, l2, lib.hyperexponential(mu1, Csq=5),
@@ -111,6 +111,11 @@ if __name__ == "__main__":
     #run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
 
     print("**WHITTLE INDEX TESTS**")
-    c1, c2 = lambda t : 2 if t > 13 else 0, lambda t : 1
-    WhittleIdx = indexpolicies.Whittle([l1, l2], [mu1, mu2], [c1, c2])
+    l1, l2, mu1, mu2 = 0.4, 0.3, 1, 1.5
+    c1, c2 = lambda t : 2 if t > 13 else 0, lambda t : 1 if t > 5 else 0
+    WhittleIdx = policy.Whittle([l1, l2], [mu1, mu2], [c1, c2])
+    run_2Class_MG1_tests("MM1WhIdx", l1, l2, lib.exp(mu1), lib.exp(mu2), WhittleIdx)
+
+    c1, c2 = lambda t : 4, lambda t : 2
+    WhittleIdx = policy.Whittle([l1, l2], [mu1, mu2], [c1, c2])
     run_2Class_MG1_tests("MM1WhIdx", l1, l2, lib.exp(mu1), lib.exp(mu2), WhittleIdx)

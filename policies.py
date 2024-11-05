@@ -77,40 +77,36 @@ def interpolated_fx(x, sample_xs, sample_fxs):
         return np.interp(x, sample_xs, sample_fxs)
 
 # delay based whittle index priority for k-class M/M/1
-def Whittle(arrival_rates, service_rates, holding_cost_rates, age_range=None):
-    if not age_range:
-        age_range = np.arange(0, 15, 1)
+def Whittle(arrival_rates, service_rates, holding_cost_rates, age_values=None):
+    if not age_values:
+        age_values = np.arange(0, 20, 0.1)
 
     # compute priority functions
-    Vs = []     
+    V_values = []
     for l, mu, c in zip(arrival_rates, service_rates, holding_cost_rates):
         Ti = [random.expovariate(mu - l) for _ in range(10**4)]
-        Vi_values = [mu * np.mean([c(t + T) for T in Ti]) for t in age_range]
-        Vs.append(lambda r, s, t:interpolated_fx(t, age_range, Vi_values))
+        Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
+        V_values.append(Vi_values)
+    V = lambda r, s, t, k: interpolated_fx(t, age_values, V_values[k-1])
 
-    # compute priority grids
-    def compute_overtake_grid(class1, class2):
-        pass
-    
+
     def calculate_overtake_time(job1, job2, current_time):
-        i1, t1 = job1.job_class.index-1, job1.arrival_time
-        i2, t2 = job2.job_class.index-1, job2.arrival_time
-        V1, V2 = Vs[i1], Vs[i2]
-        # min t : V1(t - t1) <= V2(t - t2)
-
-        def is_V2_higher(t):
-            return V1(0, 0, t-t1) - V2(0, 0, t-t2)
-
+        class1, t1 = job1.job_class.index-1, job1.arrival_time
+        class2, t2 = job2.job_class.index-1, job2.arrival_time
+        
+        def overtake_cond(age2):
+            return np.interp(age2, age_values, V_values[class2]) - \
+                np.interp(age2 + (t1-t2), age_values, V_values[class1])
         try:
-            preemption_delay = 0.001            
-            overtake_time = opt.bisect(is_V2_higher, current_time, age_range[-1] + t2)
-            return overtake_time + preemption_delay
+            curr_age2 = current_time - t2
+            overtake_age2 = opt.brentq(overtake_cond, curr_age2, age_values[-1])
+            overtake_time = current_time + overtake_age2 - curr_age2
+            return overtake_time + 0.3
         except ValueError:
-            return None # no overtake
-
-    return Policy("Whittle", priority_fn=Vs, is_preemptive=True,
+            return None
+    
+    return Policy("Whittle", priority_fn=V, is_preemptive=True,
                   is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
-
 
 

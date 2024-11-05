@@ -4,7 +4,7 @@ import json, os
 import lib
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 class Event:
     def __init__(self, event_type, time, job=None):
@@ -38,7 +38,6 @@ class JobClass:
         self.l = l
         self.S = S
         self.priority = None
-        self.b = None
         
         self.arrival_sequence = None
         if path:
