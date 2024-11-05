@@ -4,7 +4,7 @@ import json, os
 import lib
 
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 class Event:
     def __init__(self, event_type, time, job=None):
@@ -217,14 +217,14 @@ class MG1:
         # calculate what the system currently considers the earliest preemption into preemption_event
         if new_job:
             # if a higher b job just arrived, it may preempt the low b job if it hasn't completed service
-            t_overtake = self.policy.calculate_overtake_time(self.current_job, new_job)
+            t_overtake = self.policy.calculate_overtake_time(self.current_job, new_job, self.current_time)
             if t_overtake: # and t_overtake < self.current_departure_event.time:
                 preemption_event = Event('PreemptionCheck', t_overtake, new_job)             
         else:
             # when starting new service, check and schedule if any job in queue may grow to overtake priority
             min_overtake_time, overtake_job = float('inf'), None
             for job in self.job_queue:
-                t_overtake = self.policy.calculate_overtake_time(self.current_job, job)
+                t_overtake = self.policy.calculate_overtake_time(self.current_job, job, self.current_time)
                 if t_overtake and t_overtake < min_overtake_time:
                     min_overtake_time, overtake_job = t_overtake, job
                     

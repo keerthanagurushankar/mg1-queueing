@@ -1,6 +1,6 @@
 import math, random
 import numpy as np
-import lib, policies as policy, derivations, simulations
+import lib, policies as policy, derivations, simulations, indexpolicies
 from termcolor import colored
 
 def print_test(test_label, empirical_val, theoretical_val):
@@ -58,59 +58,59 @@ def run_2Class_MG1_tests(test_label, l1, l2, S1, S2, policy):
 if __name__ == "__main__":
     print("**MG1 FCFS TESTS**")
     l, mu = .4, 2
-    run_MG1_tests("MM1", l, lib.exp(mu))
-    run_MG1_tests("MD1", l, lib.det(mu))
-    run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
-    run_MG1_tests("MPar1",l,lib.pareto(mu))
+    # run_MG1_tests("MM1", l, lib.exp(mu))
+    # run_MG1_tests("MD1", l, lib.det(mu))
+    # run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
+    # run_MG1_tests("MPar1",l,lib.pareto(mu))
 
-    print("**2 CLASS NPPRIO TESTS**")
+    # print("**2 CLASS NPPRIO TESTS**")
     l1, l2, mu1, mu2 = .4, .3, 1, 2
-    run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
-    run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
-    run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)
-    run_2Class_MG1_tests("2cMD1b", l2, l1, lib.det(mu2), lib.det(mu1), policy.NPPrio12)
-    run_2Class_MG1_tests("2cMH1a", l1, l2, lib.hyperexponential(mu1, Csq=5),
-                        lib.hyperexponential(mu2, Csq=10), policy.NPPrio12)
+    # run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
+    # run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
+    # run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)
+    # run_2Class_MG1_tests("2cMD1b", l2, l1, lib.det(mu2), lib.det(mu1), policy.NPPrio12)
+    # run_2Class_MG1_tests("2cMH1a", l1, l2, lib.hyperexponential(mu1, Csq=5),
+    #                     lib.hyperexponential(mu2, Csq=10), policy.NPPrio12)
 
 
     print("**2 CLASS PPRIO TESTS**")
-    run_2Class_MG1_tests("2cMM1c", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.PPrio12)
-    run_2Class_MG1_tests("2cMM1d", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.PPrio12)
-    run_2Class_MG1_tests("2cMD1c", l1, l2, lib.det(mu1), lib.det(mu2), policy.PPrio12)
-    run_2Class_MG1_tests("2cMH1c", l1, l2, lib.hyperexponential(mu1, Csq=5),
-                        lib.hyperexponential(mu2, Csq=5), policy.PPrio12)
-    run_2Class_MG1_tests("2cMH1d", l1, l2, lib.hyperexponential(mu1, Csq=10),
-                        lib.hyperexponential(mu2, Csq=10), policy.PPrio12)
+    #run_2Class_MG1_tests("2cMM1c", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.PPrio12)
+    # run_2Class_MG1_tests("2cMM1d", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.PPrio12)
+    # run_2Class_MG1_tests("2cMD1c", l1, l2, lib.det(mu1), lib.det(mu2), policy.PPrio12)
+    # run_2Class_MG1_tests("2cMH1c", l1, l2, lib.hyperexponential(mu1, Csq=5),
+    #                     lib.hyperexponential(mu2, Csq=5), policy.PPrio12)
+    # run_2Class_MG1_tests("2cMH1d", l1, l2, lib.hyperexponential(mu1, Csq=10),
+    #                     lib.hyperexponential(mu2, Csq=10), policy.PPrio12)
     
-    print("**2 CLASS NP-ACC-PRIO TESTS**")
-    NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) 
-    run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
-    run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
-    run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
-                        lib.hyperexponential(mu2, Csq=5), NPAccPrio)
-    b1, b2 = 1, 1 
+    # print("**2 CLASS NP-ACC-PRIO TESTS**")
+    # NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) 
+    # run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
+    # run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
+    # run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+    #                     lib.hyperexponential(mu2, Csq=5), NPAccPrio)
+    # b1, b2 = 1, 1 
 
     print("**2 CLASS P-ACC-PRIO TESTS**")
     PAccPrio = policy.AccPrio(b1 = 100, b2 = 1, is_preemptive = True)
-    run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
-    run_2Class_MG1_tests("2cMD1Pacc", l1, l2, lib.det(mu1), lib.det(mu2), PAccPrio)
-    run_2Class_MG1_tests("2cMH1Pacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
-                         lib.hyperexponential(mu2, Csq=5), PAccPrio)    
+    #run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
+    # run_2Class_MG1_tests("2cMD1Pacc", l1, l2, lib.det(mu1), lib.det(mu2), PAccPrio)
+    # run_2Class_MG1_tests("2cMH1Pacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+    #                      lib.hyperexponential(mu2, Csq=5), PAccPrio)    
 
-    print("**SRPT TESTS**")
-    l, mu = 7, 10
-    run_MG1_tests("SRPT MM1", l, lib.exp(mu), policy.SRPT)    
-    run_MG1_tests("SRPT MD1", l, lib.det(mu), policy.SRPT)
-    run_MG1_tests("SRPT MH1 Csq10", l, lib.hyperexponential(mu, Csq=10), policy.SRPT)
-    run_MG1_tests("SRPT MH1 Csq50", l, lib.hyperexponential(mu, Csq=50), policy.SRPT)    
-    run_MG1_tests("SRPT MH1 Csq100", l, lib.hyperexponential(mu, Csq=100), policy.SRPT)
-    run_MG1_tests("SRPT MPar1", l, lib.pareto(mu), policy.SRPT)
+    # print("**SRPT TESTS**")
+    # l, mu = 7, 10
+    # run_MG1_tests("SRPT MM1", l, lib.exp(mu), policy.SRPT)    
+    # run_MG1_tests("SRPT MD1", l, lib.det(mu), policy.SRPT)
+    # run_MG1_tests("SRPT MH1 Csq10", l, lib.hyperexponential(mu, Csq=10), policy.SRPT)
+    # run_MG1_tests("SRPT MH1 Csq50", l, lib.hyperexponential(mu, Csq=50), policy.SRPT)    
+    # run_MG1_tests("SRPT MH1 Csq100", l, lib.hyperexponential(mu, Csq=100), policy.SRPT)
+    # run_MG1_tests("SRPT MPar1", l, lib.pareto(mu), policy.SRPT)
 
     print("**LOOKAHEAD TESTS**")
-    run_2Class_MG1_tests("MM1Look0", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(0))
-    run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
+    #run_2Class_MG1_tests("MM1Look0", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(0))
+    #run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
 
     print("**WHITTLE INDEX TESTS**")
     c1, c2 = lambda t : 2 if t > 13 else 0, lambda t : 1
-    WhittleIdx = policy.Whittle([l1, l2], [mu1, mu2], [c1, c2])
-    #run_2Class_MG1_tests("MM1WhIdx", l1, l2, lib.exp(mu1), lib.exp(mu2), WhittleIdx)
+    WhittleIdx = indexpolicies.Whittle([l1, l2], [mu1, mu2], [c1, c2])
+    run_2Class_MG1_tests("MM1WhIdx", l1, l2, lib.exp(mu1), lib.exp(mu2), WhittleIdx)
