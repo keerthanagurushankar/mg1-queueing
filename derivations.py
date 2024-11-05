@@ -206,6 +206,13 @@ class TwoClassMG1:
         T1, T2 = T12
         return two_case_rv(self.l1, self.l2, T1, T2)
 
+    def T_split_capacity(self, p):
+        # 1-p fraction capacity to class 1 => S1 -> S1/(1-p)
+        T1 = MG1(self.l1, scale_rv(1/(1-p), self.S1)).T_FCFS()
+        T2 = MG1(self.l2, scale_rv(1/p, self.S2)).T_FCFS()
+        return T1, T2
+        
+
     def T(self, policy_name):
         if policy_name == "PPrio12":
             return self.T_PPrio12()
@@ -221,6 +228,11 @@ class TwoClassMG1:
         elif policy_name[0] == "Lookahead":
             alpha = policy_name[1]
             return self.T_Lookahead(alpha)
+        elif policy_name[0] == "SplitCapacity":
+            # p in (self.rho1, 1-self.rho2)
+            p = (self.rho1 + 1 - self.rho2)/2
+            print(self.rho1, 1-self.rho2)
+            return self.T_split_capacity(p)
         else:
             return None
             
@@ -230,9 +242,9 @@ import matplotlib.pyplot as plt
 
 def plot_ETsq(plot_title, S1_gen, S2_gen):
     S1, S2 = lib.moments_from_sample_gen(S1_gen), lib.moments_from_sample_gen(S2_gen)
-    policy_names = ["FCFS", "PPrio12"]
+    policy_names = ["FCFS", "PPrio12", ("SplitCapacity", 0.4)]
     T_bypi_byrho = []
-    rhos = np.linspace(0.4, 0.9, 10)
+    rhos = np.linspace(0.4, 0.6, 10)
     
     for rho in rhos:
         l = rho/(1/mu1 + 1/mu2)

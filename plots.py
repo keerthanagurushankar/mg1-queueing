@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import lib, simulations, policies as policy
 import json
 
+# Goal: Combine SRPT-FCFS
+
 def save_sample_path(l1, l2, S1, S2, b1, b2, dname):
     # run a PAccPrio simulation and save metrics to dname (we only use arrival seqs)
     PAccPrio = policy.AccPrio(b1, b2, is_preemptive = True)
@@ -95,11 +97,11 @@ def plot_best_PAccPrio(l, mu2):
                         from_file=False)   
     
 def plot_best_Lookahead(l, mu2):
-    for mu1 in [4]:
+    for mu1 in [1]:
         assert l/mu1 + l/mu2 < 1, "Load must be less than 1"        
         plot_alpha_vs_tail(f'sample_paths/MM1-{l}-{mu1}-{mu2}', l, l, mu1, mu2)
         
 if __name__ == "__main__":
     # plot_best_PAccPrio(1, 1.5)
-    plot_best_Lookahead(1, 1.5)
+    plot_best_Lookahead(0.5, 2)
     plt.show()
