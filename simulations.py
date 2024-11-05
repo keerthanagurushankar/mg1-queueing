@@ -62,20 +62,15 @@ class MG1:
         
         self.simulation_time = 10**5
         self.inspection_rate = 1
-        self.preemption_delay = 0.001 # slight delay preemption check for priority overtake
         
         # initialize priority_function of job classes
         for k, job_class in enumerate(job_classes):
             if policy.priority_fn == None:
                 job_class.priority = lambda r, s, t, idx=job_class.index: -idx
-                job_class.b = 0
             elif type(policy.priority_fn) is list:
                 job_class.priority = policy.priority_fn[k]
-                job_class.b = job_class.priority(0, 0, 1) - job_class.priority(0, 0, 0)
-                job_class.a = job_class.priority(0, 0, 0)
             else:
                 job_class.priority = lambda r, s, t, idx=job_class.index: policy.priority_fn(r, s, t, idx)
-                job_class.b = policy.priority_fn(0, 0, 1, job_class.index) - policy.priority_fn(0, 0, 0, job_class.index)
 
         # System state
         self.event_queue = [] # holds events in order of event time
@@ -211,17 +206,6 @@ class MG1:
 
         self.update_priorities()
         self.start_service()
-
-    def calculate_overtake_time(self, queue_job):
-        b_curr, b_queue = self.current_job.job_class.b, queue_job.job_class.b
-        if b_queue <= b_curr:
-            return None
-
-        a_curr, a_queue = self.current_job.job_class.a, queue_job.job_class.a
-        # a1 + b1 (t-t1) = a2 + b2 (t-t2)
-        # (b1 - b2) t = a2 - a1 + b1 t1 - b2 t2
-        t_overtake = (a_curr - a_queue + b_queue*queue_job.arrival_time - b_curr*self.current_job.arrival_time) / (b_queue-b_curr)
-        return t_overtake + self.preemption_delay
         
     def schedule_preemption_check(self, new_job = None):
         # check if new arrival or some job in queue may preempt the current service
@@ -233,14 +217,14 @@ class MG1:
         # calculate what the system currently considers the earliest preemption into preemption_event
         if new_job:
             # if a higher b job just arrived, it may preempt the low b job if it hasn't completed service
-            t_overtake = self.calculate_overtake_time(new_job)
+            t_overtake = self.policy.calculate_overtake_time(self.current_job, new_job)
             if t_overtake: # and t_overtake < self.current_departure_event.time:
                 preemption_event = Event('PreemptionCheck', t_overtake, new_job)             
         else:
             # when starting new service, check and schedule if any job in queue may grow to overtake priority
             min_overtake_time, overtake_job = float('inf'), None
             for job in self.job_queue:
-                t_overtake = self.calculate_overtake_time(job)
+                t_overtake = self.policy.calculate_overtake_time(self.current_job, job)
                 if t_overtake and t_overtake < min_overtake_time:
                     min_overtake_time, overtake_job = t_overtake, job
                     
@@ -273,14 +257,12 @@ class MG1:
 
     def save_metrics(self, path):
         os.makedirs(path, exist_ok=True)
-        with open(os.path.join(path, "metrics.json"), 'w') as f:
-            json.dump(self.metrics, f)
+        json.dump(self.metrics, open(os.path.join(path, "metrics.json"), 'w'))
             
         for job_class in self.job_classes:
             arrival_sequence = [job for job in self.metrics
                                 if job['job_class'] == job_class.index]
             fname = os.path.join(path, f"arrival_sequence{job_class.index}.json")
-            with open(fname, 'w') as f:
-                json.dump(arrival_sequence, f)
+            json.dump(arrival_sequence, open(fname, 'w'))
         
         logging.info(f"Saved metrics to {path}")
