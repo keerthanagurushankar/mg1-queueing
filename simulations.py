@@ -59,7 +59,7 @@ class MG1:
         self.job_classes = job_classes
         self.policy = policy
         
-        self.simulation_time = 5*10**5
+        self.simulation_time = 10**5
         self.inspection_rate = 0.001
         
         # initialize priority_function of job classes
@@ -88,7 +88,7 @@ class MG1:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
 
-        heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
+        #heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
         
     def run(self):
         self.initialize()

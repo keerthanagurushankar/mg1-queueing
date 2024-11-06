@@ -82,8 +82,8 @@ def Whittle(arrival_rates, service_rates, holding_cost_rates, age_values=None):
         V_values.append(Vi_values)
     V = lambda r, s, t, k: np.interp(t, age_values, V_values[k-1])
 
+    # if job2 has currently lower prio, but may be higher later, compute when.    
     def calculate_overtake_time(job1, job2, current_time):
-        # if job2 has currently lower prio, but may be higher later, compute when.
         class1, t1 = job1.job_class.index-1, job1.arrival_time
         class2, t2 = job2.job_class.index-1, job2.arrival_time
 
@@ -94,21 +94,15 @@ def Whittle(arrival_rates, service_rates, holding_cost_rates, age_values=None):
         V2 = lambda t: np.interp(t-t2, age_values, V_values[class2])
         overtake_cond = lambda t: V2(t) - V1(t)
         max_time = t2 + age_values[-1]
-
-
-        # if class2 == 1 and class1 == 0:
-        #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
-        #     plt.plot(age_values, np.zeros(len(age_values)))
-        #     plt.show()
         
-        logging.debug(f"Checking for overtake of {class1+1, t1} and {class2+1, t2}")
+        logging.debug(f"Checking for overtake of {class2+1, t2} over {class1+1, t1}")
         
         if overtake_cond(current_time) < 0 and overtake_cond(max_time) > 0:
             overtake_time = opt.brentq(overtake_cond, current_time, max_time)
             return overtake_time + 0.005 if overtake_time > current_time else None
 
-        if overtake_cond(max_time) < 0 and overtake_cond(max_time) < 0:
-            for t in np.arange(current_time, max_time, 1):
+        if overtake_cond(current_time) < 0 and overtake_cond(max_time) < 0:
+            for t in np.linspace(current_time, max_time, 5)[1:-1]:
                 if overtake_cond(t) > 0:
                     overtake_time = opt.brentq(overtake_cond, current_time, t)
                     return overtake_time + 0.05 if overtake_time > current_time else None
@@ -126,3 +120,8 @@ if __name__ == "__main__":
     c1, c2 = lambda t : 2 if t > 10 else 0, lambda t : 1 if t > 5 else 0
     WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
     
+
+        # if class2 == 1 and class1 == 0:
+        #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
+        #     plt.plot(age_values, np.zeros(len(age_values)))
+        #     plt.show()
