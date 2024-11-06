@@ -1,6 +1,6 @@
 class Policy:
     def __init__(self, policy_name, priority_fn=None, is_preemptive=False,
-                 is_dynamic_priority=False, calculate_overtake_time=lambda j1, j2 : None):
+                 is_dynamic_priority=False, calculate_overtake_time=lambda j1,j2,t:None):
         self.policy_name = policy_name
         self.priority_fn = priority_fn
         self.is_preemptive = is_preemptive
@@ -17,7 +17,7 @@ NPPrio12 = Policy("NPPrio12", priority_fn=[V1, V2], is_preemptive=False)
 PPrio12 = Policy("PPrio12", priority_fn=[V1, V2], is_preemptive=True)
 
 V1, V2 = lambda r, s, t:-2, lambda r, s, t:-1
-NPPrio12 = Policy("NPPrio21", priority_fn=[V1, V2], is_preemptive=False)
+NPPrio21 = Policy("NPPrio21", priority_fn=[V1, V2], is_preemptive=False)
 PPrio21 = Policy("PPrio21", priority_fn=[V1, V2], is_preemptive=True)
 
 def AccPrio(b1, b2, is_preemptive=False):
@@ -65,21 +65,14 @@ def Lookahead(alpha):
 
 import random, numpy as np
 import scipy.optimize as opt
-
-# interpolate f given evaluation at sample values
-def interpolated_fx(x, sample_xs, sample_fxs):
-    # Use np.interp for linear interpolation
-    if x < sample_xs[0]:  # If age is below the sample range, return the first value
-        return sample_fxs[0]
-    elif x > sample_fxs[-1]:  # If age is above the sample range, return the last value
-        return sample_fxs[-1]
-    else:
-        return np.interp(x, sample_xs, sample_fxs)
+import matplotlib.pyplot as plt
+import logging
+logging.basicConfig(level=logging.INFO)
 
 # delay based whittle index priority for k-class M/M/1
 def Whittle(arrival_rates, service_rates, holding_cost_rates, age_values=None):
     if not age_values:
-        age_values = np.arange(0, 20, 0.1)
+        age_values = np.arange(0, 15, 0.1)
 
     # compute priority functions
     V_values = []
@@ -87,26 +80,49 @@ def Whittle(arrival_rates, service_rates, holding_cost_rates, age_values=None):
         Ti = [random.expovariate(mu - l) for _ in range(10**4)]
         Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
         V_values.append(Vi_values)
-    V = lambda r, s, t, k: interpolated_fx(t, age_values, V_values[k-1])
-
+    V = lambda r, s, t, k: np.interp(t, age_values, V_values[k-1])
 
     def calculate_overtake_time(job1, job2, current_time):
+        # if job2 has currently lower prio, but may be higher later, compute when.
         class1, t1 = job1.job_class.index-1, job1.arrival_time
         class2, t2 = job2.job_class.index-1, job2.arrival_time
-        
-        def overtake_cond(age2):
-            return np.interp(age2, age_values, V_values[class2]) - \
-                np.interp(age2 + (t1-t2), age_values, V_values[class1])
-        try:
-            curr_age2 = current_time - t2
-            overtake_age2 = opt.brentq(overtake_cond, curr_age2, age_values[-1])
-            overtake_time = current_time + overtake_age2 - curr_age2
-            return overtake_time + 0.3
-        except ValueError:
+
+        if class1 == class2:
             return None
+        
+        V1 = lambda t: np.interp(t-t1, age_values, V_values[class1])
+        V2 = lambda t: np.interp(t-t2, age_values, V_values[class2])
+        overtake_cond = lambda t: V2(t) - V1(t)
+        max_time = t2 + age_values[-1]
+
+
+        # if class2 == 1 and class1 == 0:
+        #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
+        #     plt.plot(age_values, np.zeros(len(age_values)))
+        #     plt.show()
+        
+        logging.debug(f"Checking for overtake of {class1+1, t1} and {class2+1, t2}")
+        
+        if overtake_cond(current_time) < 0 and overtake_cond(max_time) > 0:
+            overtake_time = opt.brentq(overtake_cond, current_time, max_time)
+            return overtake_time + 0.005 if overtake_time > current_time else None
+
+        if overtake_cond(max_time) < 0 and overtake_cond(max_time) < 0:
+            for t in np.arange(current_time, max_time, 1):
+                if overtake_cond(t) > 0:
+                    overtake_time = opt.brentq(overtake_cond, current_time, t)
+                    return overtake_time + 0.05 if overtake_time > current_time else None
+
+        return None    
     
     return Policy("Whittle", priority_fn=V, is_preemptive=True,
                   is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
 
-
+if __name__ == "__main__":
+    l1, l2, mu1, mu2 = .4, .5, 1, 1.5
+    c1, c2 = lambda t : 2 if t > 10 else 0, lambda t : 1
+    #WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])    
+    c1, c2 = lambda t : 2 if t > 10 else 0, lambda t : 1 if t > 5 else 0
+    WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
+    

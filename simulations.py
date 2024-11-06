@@ -59,8 +59,8 @@ class MG1:
         self.job_classes = job_classes
         self.policy = policy
         
-        self.simulation_time = 10**5
-        self.inspection_rate = 1
+        self.simulation_time = 5*10**5
+        self.inspection_rate = 0.001
         
         # initialize priority_function of job classes
         for k, job_class in enumerate(job_classes):
@@ -88,7 +88,7 @@ class MG1:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
 
-        #heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
+        heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
         
     def run(self):
         self.initialize()
@@ -106,7 +106,7 @@ class MG1:
             elif event.event_type == 'Inspection':
                 self.handle_inspection()
             elif event.event_type == 'PreemptionCheck':
-                self.preempt_current_job()
+                self.handle_preemption_check()
 
     def handle_arrival(self, event):
         job = event.job
@@ -149,8 +149,8 @@ class MG1:
 
                 for job in self.job_queue:
                     job_priority = job.current_priority(self.current_time)
-                    assert job_priority <= current_job_priority + 10*self.preemption_delay, "Not working on highest prio job" + f"\
-                      {current_job_priority, job_priority, self.current_job.job_class.b, job.job_class.b}" 
+                    assert job_priority <= current_job_priority + 0.1, "Not working on highest prio job" + f"\
+                      {current_job_priority, job_priority, self.current_job.job_class.index, job.job_class.index}" 
             else:
                 for job in self.job_queue:
                     assert job.priority <= self.current_job.priority or job.arrival_time \
@@ -158,6 +158,15 @@ class MG1:
 
         next_inspection_time = self.current_time + random.expovariate(self.inspection_rate)
         heapq.heappush(self.event_queue, Event('Inspection', next_inspection_time))
+
+    def handle_preemption_check(self):
+        # may have to update remaining service time of current job here for srpt
+        self.current_preemption_event = None
+        self.preempt_current_job()
+        #self.update_priorities()
+
+        #if self.job_queue and self.job_queue[0].priority > self.current_job.priority:
+         #   self.preempt_current_job()
 
     def start_service(self):
         # assume system is not empty and job priorities are up to date
@@ -233,7 +242,9 @@ class MG1:
         # if found a preemption and it's better than current_preemption_event, update current_preemption_event 
         if preemption_event:
             if self.current_preemption_event and self.current_preemption_event in self.event_queue:
-                if self.current_preemption_event.time > preemption_event.time:
+                if self.current_preemption_event.time > preemption_event.time: # + 0.1 \
+                   #and self.current_preemption_event.job != preemption_event.job:
+                    logging.debug("I'm swapping preemption event")
                     self.event_queue.remove(self.current_preemption_event)
                     heapq.heapify(self.event_queue)
                     
