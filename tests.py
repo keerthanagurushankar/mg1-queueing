@@ -131,3 +131,8 @@ if __name__ == "__main__":
     c1, c2 = lambda t : 0.1 * t if t < 10 else 1, lambda t : 0.5 if t > 5 else 0
     WhittleIdx = policy.Whittle([l1, l2], [mu1, mu2], [c1, c2])
     run_2Class_MG1_tests("MM1WhIdxD", l1, l2, lib.exp(mu1), lib.exp(mu2), WhittleIdx)
+
+    print("**MANUAL WHITTLE INDEX TESTS**")
+    l1, l2 = 1, 1
+    mu1, mu2 = 1, 2
+    c1, c2 = (3, 0), (1, 0)
