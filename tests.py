@@ -1,6 +1,6 @@
 import math, random
 import numpy as np
-import lib, policies as policy, derivations, simulations, indexpolicies
+import lib, policies as policy, derivations, simulations
 from termcolor import colored
 
 def print_test(test_label, empirical_val, theoretical_val):
