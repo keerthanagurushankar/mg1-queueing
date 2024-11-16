@@ -82,18 +82,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # delay based whittle index priority for k-class M/M/1
-def Whittle(arrival_rates, service_rates, holding_cost_rates, age_values=None):
+def AgeBasedPrio(arrival_rates, service_rates, prio_fns, age_values=np.arange(0, 15, 0.1)):
     # list of floats, list of floats, list of fns, np.array
-    if not age_values:
-        age_values = np.arange(0, 15, 0.1)
-
-    # compute priority functions
-    V_values = []
-    for l, mu, c in zip(arrival_rates, service_rates, holding_cost_rates):
-        Ti = [random.expovariate(mu - l) for _ in range(10**4)]
-        Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
-        V_values.append(Vi_values)
-    V = lambda r, s, t, k: np.interp(t, age_values, V_values[k-1])
+    V_values = [[Vi(0, 0, t) for t in age_values] for Vi in prio_fns]
 
     # if job2 has currently lower prio, but may be higher later, compute when.    
     def calculate_overtake_time(job1, job2, current_time):
@@ -121,10 +112,26 @@ def Whittle(arrival_rates, service_rates, holding_cost_rates, age_values=None):
                     return overtake_time + 0.05 if overtake_time > current_time else None
 
         return None    
-    
-    return Policy("Whittle", priority_fn=V, is_preemptive=True,
+
+    return Policy("AgeBased", priority_fn = prio_fns,  is_preemptive=True,
                   is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
+
+def Whittle(arrival_rates : list[float], service_rates : list[float],
+            holding_cost_rates : list[callable], 
+            age_values=np.arange(0, 15, 0.1)):
+    
+    V_values = []
+    for l, mu, c in zip(arrival_rates, service_rates, holding_cost_rates):
+        Ti = [random.expovariate(mu - l) for _ in range(10**4)]
+        Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
+        V_values.append(Vi_values)
+    
+    Vs = [lambda r, s, t : np.interp(t, age_values, V_values[k-1])
+            for k in range(len(arrival_rates))]
+    policy = AgeBasedPrio(arrival_rates, service_rates, Vs, age_values)
+    policy.policy_name = "Whittle"
+    return policy
 
 def LinearWhittle(arrival_rates, service_rates, cost_rates):
     # list of floats, list of floats, list of pairs of floats

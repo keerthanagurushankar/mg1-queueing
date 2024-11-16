@@ -9,27 +9,63 @@ def save_sample_path(l1, l2, S1, S2, dname):
     simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1), 
                                      simulations.JobClass(2, l2, S2)], policy.FCFS)
     simulated_MG1.run()
-    simulated_MG1.save_metrics(dname)    
+    simulated_MG1.save_metrics(dname)
 
-def run_PAccPrio(l1, l2, S1, S2, b1, b2, dname=None):
-    # run a PAccPrio sim (from dname if given) and return ETsq
-    PAccPrio = policy.AccPrio(b1, b2, is_preemptive = True)
+def run_2class_simulation(l1, l2, S1, S2, policy, dname=None):
+    # run sim: if dname given, use dname/arrival_sequence{1,2}.json to gen sample path
+    # return 2 lists of response time samples from sim
     simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1, dname), 
                                      simulations.JobClass(2, l2, S2, dname)], PAccPrio)
     simulated_MG1.run()
-    response_times = [job['response_time'] for job in simulated_MG1.metrics]
-    response_times_sq = [t**2 for t in response_times]
-    return np.mean(response_times_sq)
+    T1 = [job['response_time'] for job in simulated_MG1.metrics if job.job_class == 1]
+    T2 = [job['response_time'] for job in simulated_MG1.metrics if job.job_class == 2]
+    return T1, T2
 
-def run_Lookahead(l1, l2, S1, S2, alpha, d, dname=None):
-    # run a Lookahead sim and return tail
-    simulated_MG1 = simulations.MG1([simulations.JobClass(1, l1, S1, dname), 
-                                     simulations.JobClass(2, l2, S2, dname)],
-                                     policy.Lookahead(alpha))
-    simulated_MG1.run()
-    response_times = [job['response_time'] for job in simulated_MG1.metrics]
-    response_times_tail = [1 if t > d else 0 for t in response_times]
-    return np.mean(response_times_tail)
+
+def get_rho_vs_cost(exp_name, mu1, mu2, c1, c2, policies, from_file=False):
+    if not from_file:
+        S1, S2 = lib.exp(mu1), lib.exp(mu2)
+        rhos = np.linspace(0.5, 1, 5)[:-1]
+        ECosts = []
+        
+        for rho in rhos:
+            l = rho/(1/mu1 + 1/mu2)
+            l1, l2 = round(l/2, 2), round(l/2, 2)
+            sample_name = f'{dname}/MM1-{l1}-{l2}-{mu1}-{mu2}'
+            ECosts_for_rho = []
+            for policy in policies:
+                T1, T2 = run_2class_simulation(l1, l2, S1, S2, policy, sample_name)
+                ECost =  np.mean(list(map(c1, T1)) + list(map(c2, T2)))
+                print(f"Ran computations for {rho, policy.policy_name} -> {ECost}")
+                ECosts_for_rho.append(ECost)
+                
+            ECosts.append(ECosts_for_rho)
+
+        with open(f'{exp_name}/rho-vs-ECosts.json', 'w') as f:
+            json.dump(list(zip(rhos, ECosts)), f)
+    else:
+        rhos_vs_ECosts = json.load(open(f'{exp_name}/rhos-vs-ECosts.json', 'r'))
+        rhos, ECosts = list(zip(*rhos_vs_ECosts))
+
+    return rhos, ECosts
+
+def gen_plot(exp_name, rhos, ECosts, policies):
+    plt.figure()
+    for policy, ECost in zip(policies, zip(*ECosts)):
+        plt.plot(rhos, ECost, label=policy.policy_name)
+        
+    plt.xlabel('Load')
+    plt.ylabel('Cost')
+    plt.legend()
+    plt.savefig(f'{exp_name}/rhos-vs-costs-l1=l2.png')
+
+def linear_cost_exp(exp_name, mu1:float, mu2:float, c1:float, c2:float):
+    # instantaneous c(t) = c * t then cumulative C(t) = c * t **2 / 2
+    c1_fn, C1_fn = lambda t : c1 * t, lambda t : c1 * t**2 / 2
+    c2_fn, C2_fn = lambda t : c2 * t, lambda t : c2 * t**2 / 2
+    whittle = lambda l1, l2: policy.LinearWhittle([l1, l2], [mu1, mu2], [(c1, 0), (c2, 0)])
+    gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn])
+    pass
 
 def run_Whittle(l1, l2, mu1, mu2, c1, c2, dname=None):
     # run a Whittle sim and return time-avg holding cost
@@ -47,62 +83,6 @@ def run_Whittle(l1, l2, mu1, mu2, c1, c2, dname=None):
     ECT1, ECT2 = np.mean(c1 * T1s ** 2), np.mean(c2 * T2s ** 2)
     return l1 * ECT1 + l2 * ECT2
     
-def plot_b1_vs_ETsq(dname, l1, l2, mu1, mu2, b1_max=15, from_file=False):
-    # for given (l1, l2, S1, S2) whose arrival seq is stored in dname/arrival_sequence{i}.json
-    # plot b1 -> ETsq under policy P-Acc-Prio (b1, b2=1) and save figure
-    if not from_file:
-        S1, S2 = lib.exp(mu1), lib.exp(mu2)
-        save_sample_path(l1, l2, S1, S2, 1, 1, dname)
-        
-        b1s, ETsqs = [], []
-        for i in range(b1_max):
-            b1, b2 = np.exp(i/2), 1
-            ETsq = run_PAccPrio(l, l, S1, S2, b1, b2, dname)   
-            print(f"Ran computations for {i}, {b1} -> {ETsq}")             
-            
-            b1s.append(b1)
-            ETsqs.append(ETsq)
-            
-        with open(f'{dname}/b1-vs-ETsq-values.json', 'a') as f:
-            json.dump(list(zip(b1s, ETsqs)), f)
-    else:
-        b1_vs_ETsqs = json.load(open(f'{dname}/b1-vs-ETsq-values.json', 'r'))
-        b1s, ETsqs = list(zip(*b1_vs_ETsqs))
-
-    plt.figure()
-    plt.plot(b1s, ETsqs)
-    plt.xscale('log')
-    plt.xlabel(r'$b_1$')
-    plt.ylabel(r'$E[T^2]$')
-    plt.title(f'Acc. Priority: Csq = 10, λ1 = λ2 = {l1}, μ1={mu1}, μ2={mu2}, b2=1')
-    plt.savefig(f'{dname}/b1-vs-ETsq.png')
-
-def plot_alpha_vs_tail(dname, l1, l2, mu1, mu2, d=10, from_file=False):
-    # for given (l1, l2, S1, S2) whose arrival seq is stored in dname/arrival_sequence{i}.json
-    # and deadline d, plot alpha -> Pr[T>d] under policy Lookahead(alpha) and save figure
-    if not from_file:
-        S1, S2 = lib.exp(mu1), lib.exp(mu2)
-        #save_sample_path(l1, l2, S1, S2, 1, 1, dname)
-        alphas, tails = [], []
-        
-        for alpha in range(3 * d // 2):
-            tail = run_Lookahead(l1, l2, S1, S2, alpha, d, dname)
-            print(f"Ran computations for {alpha}, {alpha} -> {tail}")
-            alphas.append(alpha)
-            tails.append(tail)
-            
-        with open(f'{dname}/alpha-vs-tail-values.json', 'a') as f:
-            json.dump(list(zip(alphas, tails)), f)
-    else:
-        alpha_vs_tails = json.load(open(f'{dname}/alpha-vs-tail-values.json', 'r'))
-        alphas, tails = list(zip(*alpha_vs_tails))
-
-    plt.figure()
-    plt.plot(alphas, tails)
-    plt.xlabel(r'$\alpha$')
-    plt.ylabel(rf'$\Pr[T>{d}]$')
-    plt.title(f'Lookahead, λ1 = λ2 = {l1}, μ1={mu1}, μ2={mu2}')
-    plt.savefig(f'{dname}/alpha-vs-tails.png')
 
 def plot_rho_vs_ECost(dname, mu1, mu2, c1, c2, from_file=False):
     if not from_file:
@@ -132,16 +112,7 @@ def plot_rho_vs_ECost(dname, mu1, mu2, c1, c2, from_file=False):
     plt.title(f'Whittle Suboptimality to FCFS')
     plt.savefig(f'{dname}/rhos-vs-ECosts.png')
 
-def plot_best_PAccPrio(l, mu2):
-    for mu1 in [3.5, 4, 5]:
-        assert l/mu1 + l/mu2 < 1, "Load must be less than 1"
-        plot_b1_vs_ETsq(f'sample_paths/MH101-{l}-{mu1}-{mu2}', l, l, mu1, mu2,
-                        from_file=False)   
-    
-def plot_best_Lookahead(l, mu2):
-    for mu1 in [1]:
-        assert l/mu1 + l/mu2 < 1, "Load must be less than 1"        
-        plot_alpha_vs_tail(f'sample_paths/MM1-{l}-{mu1}-{mu2}', l, l, mu1, mu2)
+
 
 def plot_LinearWhittle_cmp(mu1, mu2, c1, c2):
     #c = lambda t : 1 if t > d else 0
@@ -151,7 +122,5 @@ def plot_LinearWhittle_cmp(mu1, mu2, c1, c2):
     
         
 if __name__ == "__main__":
-    # plot_best_PAccPrio(1, 1.5)
-    # plot_best_Lookahead(0.5, 2)
     plot_LinearWhittle_cmp(1, 2, 3, 1)
     plt.show()
