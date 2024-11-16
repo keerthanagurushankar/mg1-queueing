@@ -9,43 +9,46 @@ class Policy:
 
 # SIMPLE POLICIES
 
-FCFS = Policy("FCFS")
+FCFS = Policy("FCFS", priority_fn=lambda r, s, t, k: t, is_preemptive=False)
 SRPT = Policy("SRPT", priority_fn=lambda r, s, t, k:-r, is_preemptive=True, is_dynamic_priority = True)
 
 # CLASS BASED POLICIES
 
 V1, V2 = lambda r, s, t:-1, lambda r, s, t:-2
 NPPrio12 = Policy("NPPrio12", priority_fn=[V1, V2], is_preemptive=False)
-PPrio12 = Policy("PPrio12", priority_fn=[V1, V2], is_preemptive=True)
+NPPrio12 = Policy("NPPrio12", priority_fn=lambda r, s, t, k:-k, is_preemptive=False)
+PPrio12 = Policy("PPrio12", priority_fn=lambda r, s, t, k:-k, is_preemptive=True)
 
 V1, V2 = lambda r, s, t:-2, lambda r, s, t:-1
 NPPrio21 = Policy("NPPrio21", priority_fn=[V1, V2], is_preemptive=False)
 PPrio21 = Policy("PPrio21", priority_fn=[V1, V2], is_preemptive=True)
 
-def LinearAccPrio(a_values, b_values, is_preemptive=False):
+def LinearAccPrio(a_values, b_values, is_preemptive=True):
     # Vi(t) = ai + bi t
-    Vs = [lambda r, s, t: a_values[i] + b_values[i] * t for i in range(len(a_values))]
+
+    V = lambda r, s, t, k: a_values[k-1] + b_values[k-1] * t 
     policy_name = "PAAPQ" if is_preemptive else "NPAAPQ"
 
     def calculate_overtake_time(job1, job2, current_time=None):
         i1, i2 = job1.job_class.index-1, job2.job_class.index-1
         a1, b1, t1 = a_values[i1], b_values[i1], job1.arrival_time 
-        a2, b2, t2 = a_values[i1], b_values[i2], job2.arrival_time
+        a2, b2, t2 = a_values[i2], b_values[i2], job2.arrival_time
         # a1 + b1 (t - t1) = a2 + b2 (t - t2) gives t : time of overtake
         if b2 <= b1:
             return None
-        overtake_time = (a1 - a2 + b2 * t2 - b1 * t1) / (b2 - b1) 
-        return overtake_time + 0.001 if overtake_time > current_time else None  
+        overtake_time = (a1 - a2 + b2 * t2 - b1 * t1) / (b2 - b1)
+        logging.debug(f"Checking for overtake of {i2+1, t2} over {i1+1, t1} at {overtake_time}")
+        return overtake_time + 0.001 if overtake_time >= current_time else None  
 
-    return Policy((policy_name, a_values, b_values), priority_fn=[V1, V2],
+    return Policy((policy_name, a_values, b_values), priority_fn=V,
                   is_preemptive=is_preemptive,
                   is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)    
 
-def AccPrio(bs, is_preemptive=False):
+def AccPrio(bs, is_preemptive=True):
     return LinearAccPrio([0]*len(bs), bs, is_preemptive)
 
-def AccPrio(b1, b2, is_preemptive=False):
+def AccPrio(b1, b2, is_preemptive=True):
     policy = LinearAccPrio([0, 0], [b1, b2], is_preemptive)
     policy.policy_name = ("" if is_preemptive else "N") + "PAccPrio"
     return policy
@@ -55,7 +58,7 @@ def Lookahead(alpha):
     policy.policy_name = f"Lookahead({alpha})"
     return policy
 
-def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=False):
+def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
     # Vi(t) = ai t^2 + bi t + ci
     V = lambda r, s, t, k: a_values[k] * t**2 + b_values[k] * t + c_values[k]
     policy_name = (("" if is_preemptive else "N") +  "PQAPQ", a_values, b_values, c_values)
@@ -90,7 +93,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # delay based preemptive index priority policy
-def AgeBasedPrio(prio_fns, age_values=np.arange(0, 15, 0.1)):
+def AgeBasedPrio(prio_fns, age_values=np.arange(10, 20, 0.1)):
     # list of floats, list of floats, list of fns, np.array
     V_values = [[Vi(0, 0, t) for t in age_values] for Vi in prio_fns]
 

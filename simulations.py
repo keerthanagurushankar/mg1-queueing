@@ -78,7 +78,7 @@ class MG1:
         self.current_job = None # if busy, is job being served
         self.current_service_start_time = None # if busy, is time of start of last service
         self.current_departure_event = None # departure event of job being served
-        self.current_preemption_event = None
+        self.current_preemption_event = None # the preemption check to occur nearest in future
 
         # Metrics
         self.metrics = []
@@ -122,6 +122,7 @@ class MG1:
             self.update_priorities() # if dynamic
             if self.current_job.priority < job.priority:
                 # the arrival has higher priority so we should preempt service
+                logging.debug("Arrival is more important than current job")
                 self.preempt_current_job() 
             else:
                 # arrival is low prio now but may become higher priority later (if dynamic)
@@ -191,8 +192,9 @@ class MG1:
         for job in self.job_queue:
             new_priority = job.current_priority(self.current_time)
             if not math.isclose(new_priority, job.priority):
+                logging.debug(f"I'm updating priority of {job.job_class.index, job.arrival_time} from {job.priority} to {new_priority}")                
                 updated_priority = True
-                job.priority = new_priority
+                job.priority = new_priority                
 
         if self.current_job:
             self.current_job.priority = self.current_job.current_priority(self.current_time)
