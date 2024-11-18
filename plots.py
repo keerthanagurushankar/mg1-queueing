@@ -1,12 +1,12 @@
 import math, random, numpy as np
 import matplotlib.pyplot as plt
 import lib, simulations, policies as policy
-import json, os
+import json, os, logging
 from scipy import integrate
 
 # CONSTANTS
 
-rhos = np.linspace(0.5, 1, 5)[:-1]
+rhos = np.linspace(0.5, 1, 10)[:-1]
 
 # HELPER FUNCTIONS
 
@@ -28,14 +28,16 @@ def run_2class_simulation(l1, l2, S1, S2, policy, dname=None):
     return T1, T2
 
 def lambdas_from_rho(rho, mu1, mu2, p1=0.5):
-    # given l1 = p1 l, rho = p1 * l / mu1 + (1-p1) * l /mu2
+    # given p1 fracn of arrivals are class 1, derive l1, l2 arrival rates
     l = rho / (p1 / mu1 + (1-p1) / mu2)
     l1, l2 = round(p1 * l, 3), round((1-p1)* l, 3)
     return l1, l2
 
 def compute_costs_for_exp(exp_name, mu1, mu2, c1, c2, p1, policies):
+    # exp_name:str; mu1,mu2:float; c1,c2 :float(sec)->float($/sec), p1:float
+    # policies : list[policy.Policy | float * float -> policy.Policy]
     # given c1, c2: cumulative cost fns, p1 : l1 = p1 * l,
-    # return costs : list[list[float]] : policy -> rho -> cost
+    # return costs : list[list[float]] : policy -> rho -> cost from sim
     S1, S2 = lib.exp(mu1), lib.exp(mu2)
     ECosts = [] # list[list[float]] : rho -> pi -> cost
 
@@ -51,7 +53,8 @@ def compute_costs_for_exp(exp_name, mu1, mu2, c1, c2, p1, policies):
             curr_policy = policy(l1, l2) if callable(policy) else policy
             T1, T2 = run_2class_simulation(l1, l2, S1, S2, curr_policy, sample_name)
             ECost =  np.mean(list(map(c1, T1)) + list(map(c2, T2)))
-            print(f"Ran computations for {rho}, {ECost} <- {curr_policy.policy_name}")
+            logging.info(f"Ran computations for load {round(rho, 3)}, "
+                         f"{curr_policy.policy_name} -> {ECost}")
             ECosts_for_rho.append(ECost)
 
         ECosts.append(ECosts_for_rho)
@@ -66,7 +69,7 @@ def compute_best_costs(exp_name, mu1, mu2, c1, c2, p1, policy_fam):
     return best_costs
 
 def gen_plot(exp_name, costs_by_policy, p1=0.25):
-    # costs_by_policy: dict[str->list[float]]
+    # given costs_by_policy: dict[str->list[float]] (or read from file)
     costs_fname = f'{exp_name}/costs{p1}.json'
     if costs_by_policy:
         json.dump(costs_by_policy, open(costs_fname, 'a'))
@@ -74,8 +77,14 @@ def gen_plot(exp_name, costs_by_policy, p1=0.25):
         costs_by_policy = json.load(open(costs_fname, 'r'))
     
     plt.figure()
+
+    # del costs_by_policy['FCFS'] # don't plot FCFS if too far off
+    cnt = 0
     for policy, cost in costs_by_policy.items():
-        plt.plot(rhos, cost, label=policy)
+        lw=4-3*cnt/len(costs_by_policy)
+        ls=['-','--','-.',':'][cnt%4]
+        cnt += 1        
+        plt.plot(rhos, cost, label=policy, linestyle=ls, linewidth=lw)
     
     plt.xlabel('Load')
     plt.ylabel('Cost')
@@ -85,27 +94,40 @@ def gen_plot(exp_name, costs_by_policy, p1=0.25):
 # EXPERIMENT FUNCTIONS
 
 def run_1deadline_exp(mu1, mu2, c1, c2, d1, p1=0.25):
-    exp_name = '1deadline_exp'
-    cmu_ratio = mu1 * c1 / mu2 / c2 
-    assert cmu_ratio > 1, "No priority for class 1"
-    
+    # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2     
+    exp_name = '1deadline_exp2'
     C1_fn = lambda t : c1*(t - d1) if t > d1 else 0
     C2_fn = lambda t : c2 * t # cumulative cost fns
     
     lookahead = lambda l1, l2: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1 - l1))
-    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(0.5 * cmu_ratio, 2 * cmu_ratio, 5)]
+    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
     policies = {"AccPrio*": accprios, "Whittle": [lookahead],  r'gen-$c\mu$' :
                 [policy.Lookahead(d1)], "FCFS": [policy.FCFS]}
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                         p1, policy_fam) for name, policy_fam in policies.items()}
     gen_plot(exp_name, costs_by_policy, p1)
 
-def run_linear_cost_exp(mu1:float, mu2:float, c1:float, c2:float, p1=0.25):
-    # instantaneous c(t) = c * t then cumulative C(t) = c * t **2 / 2
-    exp_name = 'linear_cost_exp'
-    cmu_ratio = mu1 * c1 / mu2 / c2
-    assert cmu_ratio > 1, "No priority for class 1"
+def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.25):
+    # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2 * is(t>d2)
+    exp_name = '2deadline_exp'
+    c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
+    c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
+
+    gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values=np.arange(0, 51, 1)/3)
+    lookaheads = [policy.Lookahead(a) for a in np.linspace(40/3, 50/3, 6)]
+    whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values=np.arange(0, 51, 1)/3)
+    fcfs = lambda l1, l2 : policy.FCFS
+    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
+    policies = {'FCFS': [fcfs], 'Lookahead*' : lookaheads, "AccPrio*" : accprios,
+                r'gen-$c\mu$': [gen_cmu], 'Whittle': [whittle]}
     
+    costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
+                            p1, policy_fam) for name, policy_fam in policies.items()}
+    gen_plot(exp_name, costs_by_policy, p1)    
+
+def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.25):
+    # instantaneous c1(t) = c1 t, c2(t) = c2 t
+    exp_name = 'linear_cost_exp2'
     c1_fn, C1_fn = lambda t : c1 * t, lambda t : c1 * t**2 / 2
     c2_fn, C2_fn = lambda t : c2 * t, lambda t : c2 * t**2 / 2
     
@@ -115,7 +137,7 @@ def run_linear_cost_exp(mu1:float, mu2:float, c1:float, c2:float, p1=0.25):
         gencmu = policy.AccPrio(mu1 * c1, mu2 * c2, is_preemptive=True)
         gencmu.policy_name = r'gen-$c\mu$'
         return gencmu
-    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(0.5 * cmu_ratio, 2 * cmu_ratio, 5)]
+    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
     policies = {'Whittle': [whittle], r'gen-$c\mu$': [gen_cmu], 'FCFS':[policy.FCFS],
                 'AccPrio*': accprios}
 
@@ -124,7 +146,8 @@ def run_linear_cost_exp(mu1:float, mu2:float, c1:float, c2:float, p1=0.25):
     gen_plot(exp_name, costs_by_policy, p1)
     
 def run_quadratic_cost_exp(mu1, mu2, c1, c2, p1=0.25):
-    exp_name = 'quadratic_cost_exp'
+    # instantaneous c1(t) = c1 t^2 , c2(t) = c2 t^2
+    exp_name = 'quadratic_cost_exp2'
     C1_fn, C2_fn = lambda t : c1 * t**3 / 3, lambda t : c2 * t**3 / 3
 
     def whittle(l1, l2):
@@ -142,28 +165,38 @@ def run_quadratic_cost_exp(mu1, mu2, c1, c2, p1=0.25):
                             p1, policy_fam) for name, policy_fam in policies.items()}
     gen_plot(exp_name, costs_by_policy, p1)
 
-def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.25):
-    exp_name = '2deadline_exp'
-    c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
-    c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
+def run_polynomial_cost_exp(mu1, mu2, c1, c2, p1=0.25):
+    # instantaneous c1(t) = c1 t, c2(t) = c2 t^2
+    exp_name = 'polynomial_cost_exp'
+    C1_fn, C2_fn = lambda t : c1 * t**2 / 2, lambda t : c2 * t**3 / 3
 
-    gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values=np.arange(0, 51, 1)/3)
-    lookaheads = [policy.Lookahead(a) for a in np.linspace(20/3, 50/3, 6)[:-1]]
-    whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values=np.arange(0, 51, 1)/3)
-    fcfs = lambda l1, l2 : policy.FCFS
+    def whittle(l1, l2):
+        cost_rate1, cost_rate2 = (0, c1, 0), (c2, 0, 0)
+        return policy.QuadraticWhittle([l1, l2], [mu1, mu2], [cost_rate1, cost_rate2])
+    def gen_cmu(l1, l2):
+        gencmu = policy.QuadraticAccPrio([0, c2], [c1, 0], [0, 0])
+        gencmu.policy_name = r'gen-$c\mu$'
+        return gencmu
     accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
-    policies = {'FCFS': [fcfs], 'Lookahead*' : lookaheads, "AccPrio*" : accprios,
-                r'gen-$c\mu$': [gen_cmu], 'Whittle': [whittle]}
-    
+    policies = {'Whittle': [whittle], r'gen-$c\mu$': [gen_cmu], 'FCFS':[policy.FCFS],
+                'AccPrio*': accprios}
+
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
-    gen_plot(exp_name, costs_by_policy, p1)
+    gen_plot(exp_name, costs_by_policy, p1)    
 
 if __name__ == "__main__":
+    # given S1 ~ exp(mu1), S2 ~ exp(mu2), cost rate "constants" c1, c2
+    # deadline/cost parameters d1, d2, gen plots of load -> cost for policies
     mu1, mu2, c1, c2, d1, d2 = 3, 1, 10, 1, 50/3, 25/3
-    # run_linear_cost_exp(mu1, mu2, c1, c2)
-    # run_1deadline_exp(mu1, mu2, c1, c2, d1)
-    # run_quadratic_cost_exp(mu1, mu2, c1, c2)
-    run_2deadline_exp(mu1, mu2, c1, c2, d1, d2)
-    #gen_plot('1deadline_exp', None, p1 = 0.25)
+    for p1 in [0.25, 0.5, 0.75]:
+        run_linear_cost_exp(mu1, mu2, c1, c2, p1)
+        run_1deadline_exp(mu1, mu2, c1, c2, d1, p1)
+        run_quadratic_cost_exp(mu1, mu2, c1, c2, p1)
+        run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1)
+        run_polynomial_cost_exp(mu1, mu2, c1, c2, p1)
+    #gen_plot('quadratic_cost_exp', None, p1 = 0.5)
+    #gen_plot('linear_cost_exp', None, p1=0.5)
+    #gen_plot('1deadline_exp', None, p1=0.5)
+    #gen_plot('2deadline_exp', None, p1=0.5)
     plt.show()

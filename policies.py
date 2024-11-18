@@ -78,10 +78,6 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
         # = a2 t^2 - 2a2 t2 t + a2 t2^2 + b2 t - b2 t2 + c2
         # Given V1(t0) > V2(t0), want smallest t s.t. V1(t) <= V2(t)
         # Given P(t) = At**2 + Bt + C > 0 now, want smallest 
-        # A = a1 - a2
-        # B = -2 * a1 * t1 + b1 + 2 * a2 * t2 - b2
-        # C = a1 * t1**2 - b1 * t1 + c1 - a2 * t2**2 + b2 * t2 - c2
-        # D = B**2 - 4 * A * C
         A = - a1 + a2
         B = 2 * a1 * t1 - b1 - 2 * a2 * t2 + b2
         C = - a1 * t1**2 + b1 * t1 - c1 + a2 * t2**2 - b2 * t2 + c2
@@ -100,8 +96,6 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
             return overtake_time + 0.001 if overtake_time >= current_time else None
         else:
             return None
-
-
         
     return Policy(policy_name, V, is_preemptive, is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
@@ -115,9 +109,10 @@ import matplotlib.pyplot as plt
 import logging
 
 # delay based preemptive index priority policy
-def AgeBasedPrio(prio_fns, age_values=np.arange(10, 20, 0.1)):
+def AgeBasedPrio(V, age_values=np.arange(10, 20, 0.1)):
     # list of floats, list of floats, list of fns, np.array
-    V_values = [[Vi(0, 0, t) for t in age_values] for Vi in prio_fns]
+    V_values = [[V(0, 0, t, 1) for t in age_values], [V(0, 0, t, 2) for t in age_values]]
+    #V_values = [[Vi(0, 0, t) for t in age_values] for Vi in prio_fns]
 
     # if job2 has currently lower prio, but may be higher later, compute when.    
     def calculate_overtake_time(job1, job2, current_time):
@@ -146,13 +141,14 @@ def AgeBasedPrio(prio_fns, age_values=np.arange(10, 20, 0.1)):
 
         return None    
 
-    return Policy("AgeBased", priority_fn = prio_fns,  is_preemptive=True,
+    return Policy("AgeBased", priority_fn = V,  is_preemptive=True,
                   is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
 
 def generalized_cmu(service_rates, holding_cost_rates, age_values=np.arange(0, 15, 0.1)):
     prio_fns = [lambda r, s, t : mu*c(t) for mu,c in zip(service_rates, holding_cost_rates)]
-    policy = AgeBasedPrio(prio_fns, age_values)
+    prio_fn = lambda r, s, t, k: service_rates[k-1] * holding_cost_rates[k-1](t)
+    policy = AgeBasedPrio(prio_fn, age_values)
     policy.policy_name = r'gen-$c\mu$'
     return policy
     
@@ -165,9 +161,9 @@ def Whittle(arrival_rates, service_rates, holding_cost_rates,
         Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
         V_values.append(Vi_values)
     
-    Vs = [lambda r, s, t : np.interp(t, age_values, V_values[k-1])
-            for k in range(len(arrival_rates))]
-    policy = AgeBasedPrio(Vs, age_values)
+    V = lambda r, s, t, k : np.interp(t, age_values, V_values[k-1])
+         #   for k in range(len(arrival_rates))]
+    policy = AgeBasedPrio(V, age_values)
     policy.policy_name = "Whittle"
     return policy
 
@@ -199,12 +195,5 @@ def QuadraticWhittle(arrival_rates, service_rates, cost_rates):
     policy.policy_name = "Whittle"
     return policy
 
-if __name__ == "__main__":
-    l1, l2, mu1, mu2 = .4, .5, 1, 1.5
-    c1, c2 = lambda t : 2 if t > 10 else 0, lambda t : 1
-    #WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])    
-    c1, c2 = lambda t : 2 if t > 10 else 0, lambda t : 1 if t > 5 else 0
-    WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
-    QW = QuadraticWhittle([l1, l2], [mu1, mu2], [(1, 0, 0), (2, 0, 0)])
     
 
