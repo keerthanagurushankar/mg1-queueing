@@ -94,12 +94,12 @@ if __name__ == "__main__":
 
     print("**2 CLASS P-ACC-PRIO TESTS**")
     PAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = True)
-    run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
+    #run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
     # run_2Class_MG1_tests("2cMD1Pacc", l1, l2, lib.det(mu1), lib.det(mu2), PAccPrio)
     # run_2Class_MG1_tests("2cMH1Pacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
     #                      lib.hyperexponential(mu2, Csq=5), PAccPrio)  
     PAccPrio = policy.AccPrio(b1 = 100, b2 = 1, is_preemptive = True)
-    run_2Class_MG1_tests("2cMM1PaccB", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)    
+    #run_2Class_MG1_tests("2cMM1PaccB", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)    
 
     # print("**SRPT TESTS**")
     # l, mu = 7, 10
@@ -111,12 +111,12 @@ if __name__ == "__main__":
     # run_MG1_tests("SRPT MPar1", l, lib.pareto(mu), policy.SRPT)
 
     print("**LOOKAHEAD TESTS**")
-    run_2Class_MG1_tests("MM1Look0", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(0))
-    run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
+    # run_2Class_MG1_tests("MM1Look0", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(0))
+    # run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
     c1, d1, c2 = 10, 50/3, 1 # mu1 c1 exp(-(mu1 - l1) * (d1 - alpha_star)) = mu2 c2
-    alpha_star = d1 - np.log((mu1*c1)/(mu2*c2)) / (mu1 - l1)
-    print(f"alpha_star {alpha_star}")
-    run_2Class_MG1_tests("MM1Look*",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(alpha_star))    
+    # alpha_star = d1 - np.log((mu1*c1)/(mu2*c2)) / (mu1 - l1)
+    # print(f"alpha_star {alpha_star}")
+    # run_2Class_MG1_tests("MM1Look*",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(alpha_star))    
 
     print("**WHITTLE INDEX TESTS**")
     # Fixed holding costs: Whittle is PPrio12
@@ -137,6 +137,11 @@ if __name__ == "__main__":
     # run_2Class_MG1_tests("MM1WhIdxD", l1, l2, lib.exp(mu1), lib.exp(mu2), WhittleIdx)
 
     print("**MANUAL WHITTLE INDEX TESTS**")
-    l1, l2 = 1, 1
-    mu1, mu2 = 1, 2
-    c1, c2 = (3, 0), (1, 0)
+    #l1, l2 = 1, 1
+    #mu1, mu2 = 1, 2
+    #c1, c2 = (3, 0), (1, 0)
+
+    print("**QUADRATIC ACC_PRIO TESTS**")
+    l1, l2 = 0.262, 0.788
+    QW = policy.QuadraticWhittle([l1, l2], [mu1, mu2], [(c1, 0, 0), (c2, 0, 0)])
+    run_2Class_MG1_tests("MM1QW", l1, l2, lib.exp(mu1), lib.exp(mu2), QW)

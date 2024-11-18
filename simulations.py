@@ -88,7 +88,7 @@ class MG1:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
 
-        heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
+        #heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
         
     def run(self):
         self.initialize()

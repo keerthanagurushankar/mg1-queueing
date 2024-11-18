@@ -37,48 +37,71 @@ def LinearAccPrio(a_values, b_values, is_preemptive=True):
         if b2 <= b1:
             return None
         overtake_time = (a1 - a2 + b2 * t2 - b1 * t1) / (b2 - b1)
-        logging.debug(f"Checking for overtake of {i2+1, t2} over {i1+1, t1} at {overtake_time}")
+        logging.debug(f"Checking for overtake of {i2+1, t2} over {i1+1, t1}"
+                      f"at {overtake_time}")
         return overtake_time + 0.001 if overtake_time >= current_time else None  
 
     return Policy((policy_name, a_values, b_values), priority_fn=V,
                   is_preemptive=is_preemptive,
                   is_dynamic_priority=True,
-                  calculate_overtake_time=calculate_overtake_time)    
+                  calculate_overtake_time=calculate_overtake_time) 
 
 def AccPrio(bs, is_preemptive=True):
     return LinearAccPrio([0]*len(bs), bs, is_preemptive)
 
 def AccPrio(b1, b2, is_preemptive=True):
     policy = LinearAccPrio([0, 0], [b1, b2], is_preemptive)
-    policy.policy_name = ("" if is_preemptive else "N") + "PAccPrio"
+    policy.policy_name = ("" if is_preemptive else "N") + "PAccPrio(" \
+        + str(round(b1, 2)) + ", " + str(round(b2, 2)) + ")"
     return policy
 
 def Lookahead(alpha):
     policy = LinearAccPrio([0, alpha], [1, 0], is_preemptive=True)
-    policy.policy_name = f"Lookahead({alpha})"
+    policy.policy_name = f"Lookahead({round(alpha, 2)})"
     return policy
 
 def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
     # Vi(t) = ai t^2 + bi t + ci
-    V = lambda r, s, t, k: a_values[k] * t**2 + b_values[k] * t + c_values[k]
-    policy_name = (("" if is_preemptive else "N") +  "PQAPQ", a_values, b_values, c_values)
+    V = lambda r, s, t, k: a_values[k-1] * t**2 + b_values[k-1] * t + c_values[k-1]
+    policy_name = ("" if is_preemptive else "N") +  "PQAPQ" + \
+        "(" + str(a_values) + ")" #b_values, c_values
+    
     def calculate_overtake_time(job1, job2, current_time):
         i1, i2 = job1.job_class.index-1, job2.job_class.index-1
+        if i1 == i2:
+            return None
+        
         a1, b1, c1, t1 = a_values[i1], b_values[i1], c_values[i1], job1.arrival_time
         a2, b2, c2, t2 = a_values[i2], b_values[i2], c_values[i2], job2.arrival_time
         # a1 (t - t1)^2 + b1 (t - t1) + c1 = a2 (t - t2) ^ 2 + b2 (t - t2) + c2
         # a1 t^2 - 2a1 t1 t + a1 t1^2 + b1 t - b1 t1 + c1
         # = a2 t^2 - 2a2 t2 t + a2 t2^2 + b2 t - b2 t2 + c2
         # Given V1(t0) > V2(t0), want smallest t s.t. V1(t) <= V2(t)
-        A = a1 - a2
-        B = -2 * a1 * t1 + b1 + 2 * a2 * t2 - b2
-        C = a1 * t1**2 - b1 * t1 + c1 - a2 * t2**2 + b2 * t2 - c2
+        # Given P(t) = At**2 + Bt + C > 0 now, want smallest 
+        # A = a1 - a2
+        # B = -2 * a1 * t1 + b1 + 2 * a2 * t2 - b2
+        # C = a1 * t1**2 - b1 * t1 + c1 - a2 * t2**2 + b2 * t2 - c2
+        # D = B**2 - 4 * A * C
+        A = - a1 + a2
+        B = 2 * a1 * t1 - b1 - 2 * a2 * t2 + b2
+        C = - a1 * t1**2 + b1 * t1 - c1 + a2 * t2**2 - b2 * t2 + c2
         D = B**2 - 4 * A * C
-        if D >= 0:
+        overtake_cond = lambda t : A * t**2 + B * t + C
+        
+        # debug
+        # if i2 == 0 and i1 == 1:
+        #     age_values = np.arange(0, 50, 0.5)
+        #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
+        #     plt.plot(age_values, np.zeros(len(age_values)))
+        #     plt.show()
+            
+        if overtake_cond(current_time) < 0 and A > 0 and D >= 0:
             overtake_time = (-B + np.sqrt(D)) / (2 * A)
-            return overtake_time if overtake_time > current_time else None
+            return overtake_time + 0.001 if overtake_time >= current_time else None
         else:
             return None
+
+
         
     return Policy(policy_name, V, is_preemptive, is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
@@ -90,7 +113,6 @@ import random, numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 import logging
-logging.basicConfig(level=logging.INFO)
 
 # delay based preemptive index priority policy
 def AgeBasedPrio(prio_fns, age_values=np.arange(10, 20, 0.1)):
@@ -173,8 +195,9 @@ def QuadraticWhittle(arrival_rates, service_rates, cost_rates):
         b_values.append(mu * (2 * a / (mu - l) + b))
         c_values.append(mu * (a * 2 / (mu - l)**2 + b / (mu - l) + c))
 
-    return QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True)
-
+    policy = QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True)
+    policy.policy_name = "Whittle"
+    return policy
 
 if __name__ == "__main__":
     l1, l2, mu1, mu2 = .4, .5, 1, 1.5
@@ -185,7 +208,3 @@ if __name__ == "__main__":
     QW = QuadraticWhittle([l1, l2], [mu1, mu2], [(1, 0, 0), (2, 0, 0)])
     
 
-        # if class2 == 1 and class1 == 0:
-        #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
-        #     plt.plot(age_values, np.zeros(len(age_values)))
-        #     plt.show()
