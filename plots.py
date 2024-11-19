@@ -6,7 +6,7 @@ from scipy import integrate
 
 # CONSTANTS
 
-rhos = np.linspace(0.5, 1, 10)[:-1]
+rhos = np.linspace(0.5, 1, 5)[:-1]
 
 # HELPER FUNCTIONS
 
@@ -25,7 +25,7 @@ def run_2class_simulation(l1, l2, S1, S2, policy, dname=None):
     simulated_MG1.run()
     T1 = [job['response_time'] for job in simulated_MG1.metrics if job['job_class'] == 1]
     T2 = [job['response_time'] for job in simulated_MG1.metrics if job['job_class'] == 2]
-    return T1, T2
+    return T1, T2    
 
 def lambdas_from_rho(rho, mu1, mu2, p1=0.5):
     # given p1 fracn of arrivals are class 1, derive l1, l2 arrival rates
@@ -75,16 +75,19 @@ def gen_plot(exp_name, costs_by_policy, p1=0.25):
         json.dump(costs_by_policy, open(costs_fname, 'a'))
     else:
         costs_by_policy = json.load(open(costs_fname, 'r'))
-    
-    plt.figure()
 
     # del costs_by_policy['FCFS'] # don't plot FCFS if too far off
-    cnt = 0
+    plt.figure()
+    plot_style = {'FCFS':('-', 1, 'blue'),
+                  'AccPrio*': ('-.', 2, 'gray'),
+                  r'gen-$c\mu$': ('-', 1, 'green'),
+                  'Lookahead*': ('--', 2, 'orange'),
+                  'Whittle':('-', 1, 'red'),
+                  'PPrio':(':', 2, 'magenta')}
+
     for policy, cost in costs_by_policy.items():
-        lw=4-3*cnt/len(costs_by_policy)
-        ls=['-','--','-.',':'][cnt%4]
-        cnt += 1        
-        plt.plot(rhos, cost, label=policy, linestyle=ls, linewidth=lw)
+        ls, lw, color = plot_style[policy]
+        plt.plot(rhos, cost, label=policy, linestyle=ls, linewidth=lw, color=color)
     
     plt.xlabel('Load')
     plt.ylabel('Cost')
@@ -95,14 +98,15 @@ def gen_plot(exp_name, costs_by_policy, p1=0.25):
 
 def run_1deadline_exp(mu1, mu2, c1, c2, d1, p1=0.25):
     # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2     
-    exp_name = '1deadline_exp2'
+    exp_name = '1deadline_exp'
     C1_fn = lambda t : c1*(t - d1) if t > d1 else 0
     C2_fn = lambda t : c2 * t # cumulative cost fns
     
     lookahead = lambda l1, l2: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1 - l1))
-    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
-    policies = {"AccPrio*": accprios, "Whittle": [lookahead],  r'gen-$c\mu$' :
-                [policy.Lookahead(d1)], "FCFS": [policy.FCFS]}
+    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(1, 44, 4)]
+    policies = { "FCFS": [policy.FCFS], "AccPrio*": accprios,
+                 r'gen-$c\mu$' : [policy.Lookahead(d1)], "Whittle": [lookahead],
+                 'PPrio': [policy.PPrio12, policy.PPrio21]}
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                         p1, policy_fam) for name, policy_fam in policies.items()}
     gen_plot(exp_name, costs_by_policy, p1)
@@ -113,13 +117,14 @@ def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.25):
     c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
     c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
 
-    gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values=np.arange(0, 51, 1)/3)
-    lookaheads = [policy.Lookahead(a) for a in np.linspace(40/3, 50/3, 6)]
-    whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values=np.arange(0, 51, 1)/3)
+    age_values = np.linspace(0, max(d1, d2)*1.1, 20)
+    gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values)
+    lookaheads = [policy.Lookahead(a) for a in np.linspace(0, d1, 4)]
+    whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
     fcfs = lambda l1, l2 : policy.FCFS
-    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
-    policies = {'FCFS': [fcfs], 'Lookahead*' : lookaheads, "AccPrio*" : accprios,
-                r'gen-$c\mu$': [gen_cmu], 'Whittle': [whittle]}
+    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(1, 44, 4)]
+    policies = {'FCFS': [fcfs], "AccPrio*":accprios, 'PPrio':[policy.PPrio12, policy.PPrio21],
+                r'gen-$c\mu$': [gen_cmu], 'Lookahead*' : lookaheads, 'Whittle': [whittle]}
     
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
@@ -127,7 +132,7 @@ def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.25):
 
 def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.25):
     # instantaneous c1(t) = c1 t, c2(t) = c2 t
-    exp_name = 'linear_cost_exp2'
+    exp_name = 'linear_cost_exp'
     c1_fn, C1_fn = lambda t : c1 * t, lambda t : c1 * t**2 / 2
     c2_fn, C2_fn = lambda t : c2 * t, lambda t : c2 * t**2 / 2
     
@@ -137,9 +142,9 @@ def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.25):
         gencmu = policy.AccPrio(mu1 * c1, mu2 * c2, is_preemptive=True)
         gencmu.policy_name = r'gen-$c\mu$'
         return gencmu
-    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
+    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(1, 44, 4)]
     policies = {'Whittle': [whittle], r'gen-$c\mu$': [gen_cmu], 'FCFS':[policy.FCFS],
-                'AccPrio*': accprios}
+                'AccPrio*': accprios, 'PPrio': [policy.PPrio12, policy.PPrio21]}
 
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
@@ -147,7 +152,7 @@ def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.25):
     
 def run_quadratic_cost_exp(mu1, mu2, c1, c2, p1=0.25):
     # instantaneous c1(t) = c1 t^2 , c2(t) = c2 t^2
-    exp_name = 'quadratic_cost_exp2'
+    exp_name = 'quadratic_cost_exp'
     C1_fn, C2_fn = lambda t : c1 * t**3 / 3, lambda t : c2 * t**3 / 3
 
     def whittle(l1, l2):
@@ -159,7 +164,7 @@ def run_quadratic_cost_exp(mu1, mu2, c1, c2, p1=0.25):
         return gencmu
     accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
     policies = {'Whittle': [whittle], r'gen-$c\mu$': [gen_cmu], 'FCFS':[policy.FCFS],
-                'AccPrio*': accprios}
+                'AccPrio*': accprios, 'PPrio': [policy.PPrio12, policy.PPrio21]}
 
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
@@ -177,9 +182,9 @@ def run_polynomial_cost_exp(mu1, mu2, c1, c2, p1=0.25):
         gencmu = policy.QuadraticAccPrio([0, c2], [c1, 0], [0, 0])
         gencmu.policy_name = r'gen-$c\mu$'
         return gencmu
-    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(15, 60, 5)]
+    accprios = [policy.AccPrio(b1, 1) for b1 in np.linspace(1, 44, 4)]
     policies = {'Whittle': [whittle], r'gen-$c\mu$': [gen_cmu], 'FCFS':[policy.FCFS],
-                'AccPrio*': accprios}
+                'AccPrio*': accprios, 'PPrio': [policy.PPrio12, policy.PPrio21]}
 
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
@@ -188,15 +193,16 @@ def run_polynomial_cost_exp(mu1, mu2, c1, c2, p1=0.25):
 if __name__ == "__main__":
     # given S1 ~ exp(mu1), S2 ~ exp(mu2), cost rate "constants" c1, c2
     # deadline/cost parameters d1, d2, gen plots of load -> cost for policies
-    mu1, mu2, c1, c2, d1, d2 = 3, 1, 10, 1, 50/3, 25/3
-    for p1 in [0.25, 0.5, 0.75]:
-        run_linear_cost_exp(mu1, mu2, c1, c2, p1)
-        run_1deadline_exp(mu1, mu2, c1, c2, d1, p1)
-        run_quadratic_cost_exp(mu1, mu2, c1, c2, p1)
-        run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1)
-        run_polynomial_cost_exp(mu1, mu2, c1, c2, p1)
+    mu1, mu2, c1, c2, d1, d2 = 3, 1, 10, 1, 10, 5
+    for p1 in [0.5]:
+        #run_linear_cost_exp(mu1, mu2, c1, c2, p1)
+        #run_1deadline_exp(mu1, mu2, c1, c2, d1, p1)
+        #run_quadratic_cost_exp(mu1, mu2, c1, c2, p1)
+        #run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1)
+        #run_polynomial_cost_exp(mu1, mu2, 3, c2, p1)
+        pass
     #gen_plot('quadratic_cost_exp', None, p1 = 0.5)
     #gen_plot('linear_cost_exp', None, p1=0.5)
     #gen_plot('1deadline_exp', None, p1=0.5)
-    #gen_plot('2deadline_exp', None, p1=0.5)
+    gen_plot('2deadline_exp', None, p1=0.5)
     plt.show()

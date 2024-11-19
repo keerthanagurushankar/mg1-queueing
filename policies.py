@@ -14,14 +14,10 @@ SRPT = Policy("SRPT", priority_fn=lambda r, s, t, k:-r, is_preemptive=True, is_d
 
 # CLASS BASED POLICIES
 
-V1, V2 = lambda r, s, t:-1, lambda r, s, t:-2
-NPPrio12 = Policy("NPPrio12", priority_fn=[V1, V2], is_preemptive=False)
 NPPrio12 = Policy("NPPrio12", priority_fn=lambda r, s, t, k:-k, is_preemptive=False)
 PPrio12 = Policy("PPrio12", priority_fn=lambda r, s, t, k:-k, is_preemptive=True)
-
-V1, V2 = lambda r, s, t:-2, lambda r, s, t:-1
-NPPrio21 = Policy("NPPrio21", priority_fn=[V1, V2], is_preemptive=False)
-PPrio21 = Policy("PPrio21", priority_fn=[V1, V2], is_preemptive=True)
+NPPrio21 = Policy("NPPrio21", priority_fn=lambda r, s, t, k:k, is_preemptive=False)
+PPrio21 = Policy("PPrio21", priority_fn=lambda r, s, t, k:k, is_preemptive=True)
 
 def LinearAccPrio(a_values, b_values, is_preemptive=True):
     # Vi(t) = ai + bi t
