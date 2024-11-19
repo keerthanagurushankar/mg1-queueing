@@ -58,8 +58,7 @@ def run_2Class_MG1_tests(test_label, l1, l2, S1, S2, policy):
 if __name__ == "__main__":
     print("**MG1 FCFS TESTS**")
     # l, mu = .4, 2
-    mu1, mu2 = 3, 1    # 0.15, 0.45; 0.65625
-    l1, l2 = 3/8, 3/8 #0.65625, 0.65625
+    l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1    # 0.15, 0.45; 0.65625
     # run_MG1_tests("MM1", l, lib.exp(mu))
     # run_MG1_tests("MD1", l, lib.det(mu))
     # run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
@@ -113,7 +112,7 @@ if __name__ == "__main__":
     print("**LOOKAHEAD TESTS**")
     # run_2Class_MG1_tests("MM1Look0", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(0))
     # run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
-    c1, d1, c2 = 10, 50/3, 1 # mu1 c1 exp(-(mu1 - l1) * (d1 - alpha_star)) = mu2 c2
+    c1, d1, c2 = 10, 10, 1 # mu1 c1 exp(-(mu1 - l1) * (d1 - alpha_star)) = mu2 c2
     # alpha_star = d1 - np.log((mu1*c1)/(mu2*c2)) / (mu1 - l1)
     # print(f"alpha_star {alpha_star}")
     # run_2Class_MG1_tests("MM1Look*",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(alpha_star))    
