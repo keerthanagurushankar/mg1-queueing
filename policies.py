@@ -57,7 +57,7 @@ def Lookahead(alpha):
     return policy
 
 def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
-    # Vi(t) = ai t^2 + bi t + ci
+    # Vi(t : age) = ai t^2 + bi t + ci
     V = lambda r, s, t, k: a_values[k-1] * t**2 + b_values[k-1] * t + c_values[k-1]
     policy_name = ("" if is_preemptive else "N") +  "PQAPQ" + \
         "(" + str(a_values) + ")" #b_values, c_values
@@ -69,6 +69,7 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
         
         a1, b1, c1, t1 = a_values[i1], b_values[i1], c_values[i1], job1.arrival_time
         a2, b2, c2, t2 = a_values[i2], b_values[i2], c_values[i2], job2.arrival_time
+        # Vi(t : time) = ai (t-ti)^2 + bi(t-ti) + ci
         # a1 (t - t1)^2 + b1 (t - t1) + c1 = a2 (t - t2) ^ 2 + b2 (t - t2) + c2
         # a1 t^2 - 2a1 t1 t + a1 t1^2 + b1 t - b1 t1 + c1
         # = a2 t^2 - 2a2 t2 t + a2 t2^2 + b2 t - b2 t2 + c2
@@ -78,18 +79,38 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
         B = 2 * a1 * t1 - b1 - 2 * a2 * t2 + b2
         C = - a1 * t1**2 + b1 * t1 - c1 + a2 * t2**2 - b2 * t2 + c2
         D = B**2 - 4 * A * C
+        # overtake_cond = lambda t : V2(t) - V1(t)
         overtake_cond = lambda t : A * t**2 + B * t + C
+
+        #assert overtake_cond(current_time) <= 0.01, "Only check overtake of lagging job"
         
-        # debug
-        # if i2 == 0 and i1 == 1:
-        #     age_values = np.arange(0, 50, 0.5)
-        #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
-        #     plt.plot(age_values, np.zeros(len(age_values)))
-        #     plt.show()
+
+
+        logging.debug(f"Checking for overtake of {i2+1, t2} over {i1+1, t1} ")
+                   #   f"at { (-B + np.sqrt(D)) / (2 * A) }")
+
+        if D <= 0:
+            logging.debug(f"quadratic fn has no root")
+            return None
             
-        if overtake_cond(current_time) < 0 and A > 0 and D >= 0:
+        if A > 0:
             overtake_time = (-B + np.sqrt(D)) / (2 * A)
+            logging.debug(f"Found one for {overtake_time}")
             return overtake_time + 0.001 if overtake_time >= current_time else None
+        elif A < 0: # overtake_cond(current_time) >= 0:
+            logging.debug(f"{current_time, (-B-np.sqrt(D)) / (2*A)}")
+            overtake_time = max(current_time, (-B+np.sqrt(D)) / (2*A)) 
+            logging.debug(f"Found one for {overtake_time}")
+
+            # debug
+            # if i2 == 1 and i1 == 0:
+            #     age_values = np.arange(0, 50, 0.5)
+            #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
+            #     plt.plot(age_values, np.zeros(len(age_values)))
+            #     plt.axvline(x=overtake_time)
+            #     plt.show()
+                
+            return overtake_time + 0.001           
         else:
             return None
         
@@ -133,13 +154,15 @@ def AgeBasedPrio(V, age_values=np.arange(10, 20, 0.1)):
             for t in np.linspace(current_time, max_time, 5)[1:-1]:
                 if overtake_cond(t) > 0:
                     overtake_time = opt.brentq(overtake_cond, current_time, t)
-                    return overtake_time + 0.05 if overtake_time > current_time else None
+                    return overtake_time + 0.005 if overtake_time > current_time else None
 
         return None    
 
-    return Policy("AgeBased", priority_fn = V,  is_preemptive=True,
+    policy = Policy("AgeBased", priority_fn = V,  is_preemptive=True,
                   is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
+    policy.priority_values = V_values
+    return policy
 
 def generalized_cmu(service_rates, holding_cost_rates, age_values=np.arange(0, 15, 0.1)):
     prio_fns = [lambda r, s, t : mu*c(t) for mu,c in zip(service_rates, holding_cost_rates)]
@@ -151,10 +174,27 @@ def generalized_cmu(service_rates, holding_cost_rates, age_values=np.arange(0, 1
 def Whittle(arrival_rates, service_rates, holding_cost_rates, 
             age_values=np.arange(0, 15, 0.1)):
     # list[float] * list[float] * list[float -> float] -> Policy
+    # Vi(t) = mui * E[ci(t + T)] where T ~ Exp(mui - li)
     V_values = []
     for l, mu, c in zip(arrival_rates, service_rates, holding_cost_rates):
         Ti = [random.expovariate(mu - l) for _ in range(10**4)]
         Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
+        V_values.append(Vi_values)
+    
+    V = lambda r, s, t, k : np.interp(t, age_values, V_values[k-1])
+         #   for k in range(len(arrival_rates))]
+    policy = AgeBasedPrio(V, age_values)
+    policy.policy_name = "Whittle"
+    return policy
+
+def Aalto(arrival_rates, service_rates, holding_cost_rates, 
+            age_values=np.arange(0, 15, 0.1)):
+    # list[float] * list[float] * list[float -> float] -> Policy
+    # Vi(t) = mui * E[ci(t + S)] where S ~ Exp(mui)
+    V_values = []
+    for l, mu, c in zip(arrival_rates, service_rates, holding_cost_rates):
+        Si = [random.expovariate(mu ) for _ in range(10**4)]
+        Vi_values = np.array([mu * np.mean([c(t + S) for S in Si]) for t in age_values])
         V_values.append(Vi_values)
     
     V = lambda r, s, t, k : np.interp(t, age_values, V_values[k-1])
@@ -176,6 +216,17 @@ def LinearWhittle(arrival_rates, service_rates, cost_rates):
     policy.policy_name = "Whittle"
     return policy
 
+def LinearAalto(arrival_rates, service_rates, cost_rates):
+    # Vi(t) = mui * E[ci * (t +  Exp(mui)) + di]
+    a_values, b_values = [], []
+    for li, mui, (ci, di) in zip(arrival_rates, service_rates, cost_rates):
+        a_values.append(mui * ci / mui + mui * di)
+        b_values.append(mui * ci)
+
+    policy = LinearAccPrio(a_values, b_values, is_preemptive=True)
+    policy.policy_name = "Aalto"
+    return policy    
+
 def QuadraticWhittle(arrival_rates, service_rates, cost_rates):
     # if ci(t) = a t^2 + bt + c then
     # Vi(t) / mui = E[a(t + T)^2 + b(t + T) + c]
@@ -191,5 +242,17 @@ def QuadraticWhittle(arrival_rates, service_rates, cost_rates):
     policy.policy_name = "Whittle"
     return policy
 
-    
+def QuadraticAalto(arrival_rates, service_rates, cost_rates):
+    # if ci(t) = a t^2 + bt + c then
+    # Vi(t) / mui = E[a(t + S)^2 + b(t + S) + c]
+    # = at^2 + 2at/(mu) + bt + a * 2/(mu)**2 + b/(mu) + c
+    a_values, b_values, c_values = [], [], []
 
+    for l, mu, (a, b, c) in zip(arrival_rates, service_rates, cost_rates):
+        a_values.append(mu * a)
+        b_values.append(mu * (2 * a / (mu) + b))
+        c_values.append(mu * (a * 2 / (mu)**2 + b / (mu) + c))
+
+    policy = QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True)
+    policy.policy_name = "Aalto"
+    return policy
