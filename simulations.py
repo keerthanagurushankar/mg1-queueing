@@ -85,7 +85,6 @@ class MG1:
         
     def initialize(self):     
         for job_class in self.job_classes:
-            #print(job_class.priority(0, 0, 0))
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
 
@@ -151,11 +150,8 @@ class MG1:
 
                 for job in self.job_queue:
                     job_priority = job.current_priority(self.current_time)
-                    #assert job_priority <= current_job_priority + .1, "Not working on highest prio job" + f"\
-                     # {current_job_priority, job_priority, self.current_job.job_class.index, job.job_class.index}"
-                    if job_priority > current_job_priority + .1:
-                        logging.warning(f"{self.current_time}: Not working on highest prio job"
-                      f"{current_job_priority, job_priority, self.current_job.job_class.index, job.job_class.index}")
+                    assert job_priority <= current_job_priority + 0.1, "Not working on highest prio job" + f"\
+                      {current_job_priority, job_priority, self.current_job.job_class.index, job.job_class.index}" 
             else:
                 for job in self.job_queue:
                     assert job.priority <= self.current_job.priority or job.arrival_time \
@@ -194,7 +190,7 @@ class MG1:
 
         updated_priority = False
         for job in self.job_queue:
-            new_priority = job.current_priority(self.current_time) # + 0.001)
+            new_priority = job.current_priority(self.current_time)
             if not math.isclose(new_priority, job.priority):
                 logging.debug(f"I'm updating priority of {job.job_class.index, job.arrival_time} from {job.priority} to {new_priority}")                
                 updated_priority = True
@@ -227,8 +223,6 @@ class MG1:
             return 
         
         preemption_event = None
-
-        logging.debug("I'm checking if I need to schedule a preemption")
         
         # calculate what the system currently considers the earliest preemption into preemption_event
         if new_job:

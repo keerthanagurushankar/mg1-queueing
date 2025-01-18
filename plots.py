@@ -96,24 +96,6 @@ def compute_best_costs(exp_name, mu1, mu2, c1, c2, p1, policy_fam):
     return [compute_best_cost_for_rho(exp_name, mu1, mu2, c1, c2,
                 p1, rho, policy_fam) for rho in rhos]
 
-def compute_costs(exp_name, service_rates, cost_rates, cumulative_cost_rates, rho, policy):
-    li = rho / sum([1/mui for mui in service_rates])
-    arrival_rates = [li] * len(service_rates)
-    job_sizes = [lib.exp(mui) for mui in service_rates]
-    
-    sample_name = f'{exp_name}/MM1-{round(li, 3)}'
-    if not os.path.exists(sample_name):
-        save_sample_path2(arrival_rates, job_sizes, sample_name)  
-
-    # run simulation for a given arrival sequence and policy, compute cost
-    policy = policy(arrival_rates) if callable(policy) else policy
-    Tis = run_multiclass_simulation(arrival_rates, job_sizes, policy, sample_name)
-    ECost = np.mean(sum([list(map(Ci, Ti)) for Ci, Ti
-                in zip(cumulative_cost_rates, Tis)], []))
-    logging.info(f"Ran simulation for load {round(rho, 3)}, "
-                 f"{policy.policy_name} -> {ECost}")
-    return ECost
-
 def gen_plot(exp_name, costs_by_policy, p1=0.5):
     # given costs_by_policy: dict[str->list[float]] (or read from file)
     costs_fname = f'{exp_name}/costs{p1}.json'
@@ -140,16 +122,17 @@ def gen_plot(exp_name, costs_by_policy, p1=0.5):
             if policy == "Whittle":
                 policy = "Us"
             
-            plt.plot(rhos, costs, label=policy, linestyle=ls, linewidth=lw,
+            plt.plot(np.delete(rhos,-3), np.delete(costs,-3),
+                     label=policy, linestyle=ls, linewidth=lw,
                  color=color, alpha=alpha)
 
     #plt.ylim(-0.1e6, 1.45e6) 2deadline drastic
     #plt.ylim(-25, 850) linear drastic
     #plt.ylim(0, 3000) polynomial balanced
-    #plt.ylim(-1, 20) # 2 deadline balanced
+    plt.ylim(0, 20) # 2 deadline balanced
     #plt.ylim(-300, 20000)
-    plt.ylim(0, 10)
-    plt.xlim(0.7, 0.985)
+    #plt.ylim(0, 10)
+    plt.xlim(0.75, 0.985)
     plt.xlabel('Load')
     plt.ylabel('Cost')
     plt.legend()

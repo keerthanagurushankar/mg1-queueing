@@ -1,20 +1,21 @@
 import math, random, numpy as np
 import policies as policy, plots as plot
+import matplotlib.pyplot as plt
 
-accprio_b1s = np.logspace(0, np.log(30), 12, base=np.e) # np.linspace(1, 30, 12)
+accprio_b1s = np.logspace(0, np.log(10), 12, base=np.e) # np.linspace(1, 30, 12)
 
 # EXPERIMENT FUNCTIONS
 
 def run_1deadline_exp(mu1, mu2, c1, c2, d1, p1=0.5):
     # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2     
-    exp_name = '1deadline_exp'
+    exp_name = '1deadline_exp2'
     C1_fn = lambda t : c1*(t - d1) if t > d1 else 0
     C2_fn = lambda t : c2 * t # cumulative cost fns
     
     lookahead = lambda l1, l2: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1 - l1))
     aalto = lambda l1, l2: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1))
     accprios = [policy.AccPrio(b1, 1) for b1 in accprio_b1s]
-    policies = { "FCFS": [policy.FCFS], #"AccPrio*": accprios,
+    policies = { "FCFS": [policy.FCFS], "AccPrio*": accprios,
                  "Whittle": [lookahead], "Aalto": [aalto],
                  r'gen-$c\mu$' : [policy.Lookahead(d1)], 
                  'PPrio': [policy.PPrio12, policy.PPrio21]}
@@ -24,7 +25,7 @@ def run_1deadline_exp(mu1, mu2, c1, c2, d1, p1=0.5):
 
 def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.5):
     # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2 * is(t>d2)
-    exp_name = '2deadline_exp_balanced2'
+    exp_name = '2deadline_exp'
     c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
     c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
 
@@ -37,9 +38,9 @@ def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.5):
     # (^if d2=l1=0, opt lookahead is latest we should prioritize class 1 in 2 deadline case)
     lookaheads = [policy.Lookahead(a) for a in np.linspace(0, a_max, 12)]
     accprios = [policy.AccPrio(b1, 1) for b1 in accprio_b1s]
-    policies = {'FCFS': [policy.FCFS],
-                "AccPrio*": accprios,
-                'PPrio':[policy.PPrio12, policy.PPrio21],
+    policies = {#'FCFS': [policy.FCFS],
+                #"AccPrio*": accprios,
+                #'PPrio':[policy.PPrio12, policy.PPrio21],
                 #'Lookahead*' : lookaheads,
                 r'gen-$c\mu$': [gen_cmu],
                 'Whittle': [whittle],
@@ -79,7 +80,7 @@ def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.5):
 def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.5):
     # instantaneous c1(t) = c1 t + d1, c2(t) = c2 t^2
     print(f'mu1 {mu1}, mu2 {mu2}, c1 {c1}, c2 {c2}, d1 {d1}, p1 {p1}')
-    exp_name = 'polynomial_cost_exp5'
+    exp_name = 'polynomial_cost_exp6'
     C1_fn, C2_fn = lambda t : c1 * t**2 / 2 + d1 * t, lambda t : c2 * t**3 / 3
 
     def whittle(l1, l2):
@@ -96,16 +97,13 @@ def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.5):
         return gencmu
     
     accprios = [policy.AccPrio(b1, 1) for b1 in accprio_b1s]
-    t0 = (mu1 * c1 + np.sqrt((mu1*c1)**2 + 4 * mu1 * mu2 * c2 * d1))/2/c2/mu2
-    # prio crossing at mu2 c2 t^2 -mu1 c1 t - mu1 d1 = 0
-    lookaheads = [policy.Lookahead(a) for a in np.linspace(0,  1.5* t0, 12)]    
+    
     policies = {
                 'Whittle': [whittle],
                 'Aalto': [aalto],
                 r'gen-$c\mu$': [gen_cmu], 
                 #'AccPrio*': accprios,
                 'PPrio': [policy.PPrio12, policy.PPrio21],
-                #'Lookahead*': lookaheads,
                 'FCFS':[policy.FCFS],
                 }
 
@@ -121,8 +119,8 @@ if __name__ == "__main__":
 
     #run_1deadline_exp(mu1, mu2, 10**3, c2, d1, 0.5)
     #run_2deadline_exp(mu1, mu2, 10**6, c2, d1, d2, 0.5)
-    run_polynomial_cost_exp(mu1, mu2, 1, 1, 30, 0.1)
-    #run_1deadline_exp(3, 1, 10**6, 1, 10, 0.5)
+    run_polynomial_cost_exp(mu1, mu2, 1, 1, 30, 0.5)
+    #run_1deadline_exp(3, 1, 10, 1, 2, 0.9)
     
     #run_2deadline_exp(3, 1, 10, 1, 10, 5, 0.5)
     #run_1deadline_exp(3, 1, 10, 1, 5, 0.5)
@@ -130,15 +128,9 @@ if __name__ == "__main__":
     #run_2deadline_exp(3, 1, 10**6, 1, 10, 5, 0.5)    
     #run_linear_cost_exp(2, 1, 1, 2, 0.5)
 
-    k=2
-    cost_rates = [np.random.rand(3) for _ in range(k)]
-    #cost_rates = [(10, 0, 0), (1, 0, 0)]
-    #run_multiclass_poly_exp([1]*k, cost_rates)
-    
-    
-    #gen_plot('polynomial_cost_exp', None, p1 = 0.5)
-    #gen_plot('1deadline_exp', None, p1=0.5)
-    #gen_plot('2deadline_exp_balanced2', None, p1=0.5)
+    #plot.gen_plot('polynomial_cost_exp', None, p1 = 0.5)
+    #plot.gen_plot('1deadline_exp', None, p1=0.9)
+    #plot.gen_plot('2deadline_exp_balanced2', None, p1=0.5)
     #gen_plot('linear_cost_exp3', None, p1 = 0.5)
     #gen_plot('multiclass_exp4', None, p1=0.5)
 
