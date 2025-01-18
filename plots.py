@@ -6,7 +6,7 @@ plt.rcParams.update({'font.size': 14})
 
 # CONSTANTS
 
-rhos = np.linspace(0.7, 1, 5)[:-1]
+rhos = np.linspace(0.8, 1, 5)[:-1]
 
 
 # HELPER FUNCTIONS
@@ -122,17 +122,17 @@ def gen_plot(exp_name, costs_by_policy, p1=0.5):
             if policy == "Whittle":
                 policy = "Us"
             
-            plt.plot(np.delete(rhos,-3), np.delete(costs,-3),
+            plt.plot(rhos, costs, #np.delete(rhos,-3), np.delete(costs,-3),
                      label=policy, linestyle=ls, linewidth=lw,
                  color=color, alpha=alpha)
 
     #plt.ylim(-0.1e6, 1.45e6) 2deadline drastic
     #plt.ylim(-25, 850) linear drastic
-    #plt.ylim(0, 3000) polynomial balanced
-    plt.ylim(0, 20) # 2 deadline balanced
+    #plt.ylim(0, 3000) # polynomial balanced
+    #plt.ylim(0, 20) # 2 deadline balanced
     #plt.ylim(-300, 20000)
     #plt.ylim(0, 10)
-    plt.xlim(0.75, 0.985)
+    #plt.xlim(0.75, 0.985)
     plt.xlabel('Load')
     plt.ylabel('Cost')
     plt.legend()
