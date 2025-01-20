@@ -6,7 +6,7 @@ plt.rcParams.update({'font.size': 14})
 
 # CONSTANTS
 
-rhos = np.linspace(0.8, 1, 5)[:-1]
+rhos = np.linspace(0.8, 1, 15)[:-1]
 
 
 # HELPER FUNCTIONS
@@ -110,7 +110,7 @@ def gen_plot(exp_name, costs_by_policy, p1=0.5):
                   r'gen-$c\mu$': ('--', 1, 'green', 0.5),
                   #'Lookahead*': ('--', 2, 'orange', 0.5),
                   'PPrio':(':', 2, 'magenta', 0.5),
-                  'AccPrio*': ('-.', 2, 'gray', 0.5),                  
+                  #'AccPrio*': ('-.', 2, 'gray', 0.5),                  
                   'Aalto':('-.', 1, 'cyan', 0.5),
                   'Whittle':('-', 1, 'red', 0.5),                  }
 
@@ -131,8 +131,8 @@ def gen_plot(exp_name, costs_by_policy, p1=0.5):
     #plt.ylim(0, 3000) # polynomial balanced
     #plt.ylim(0, 20) # 2 deadline balanced
     #plt.ylim(-300, 20000)
-    #plt.ylim(0, 10)
-    #plt.xlim(0.75, 0.985)
+    #plt.ylim(0, 5000)
+    plt.xlim(0.8, 0.986)
     plt.xlabel('Load')
     plt.ylabel('Cost')
     plt.legend()
