@@ -55,8 +55,22 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
         logging.debug(f"Overtake occurs at {overtake_time}")
         return overtake_time
 
-    return Policy(policy_name, priority_fn=V, is_preemptive=is_preemptive, is_dynamic_priority=True,
+    return Policy(policy_name, priority_fn=V, is_preemptive=is_preemptive,
+                  is_dynamic_priority=True,
                   calculate_overtake_time=calculate_overtake_time)
+
+def QuadraticGenCMU(service_rates, cost_rates):
+    # list[float] * list[float * float * float] -> policy
+    a_values, b_values, c_values = [], [], []
+
+    for mu, (a, b, c) in zip(service_rates, cost_rates):
+        a_values.append(mu * a)
+        b_values.append(mu * b)
+        c_values.append(mu * c)
+
+    policy = QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True)
+    policy.policy_name = r"gen-$c\mu$"
+    return policy
 
 def QuadraticWhittle(arrival_rates, service_rates, cost_rates):
     # if ci(t) = a t^2 + bt + c then

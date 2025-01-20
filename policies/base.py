@@ -1,6 +1,9 @@
+from itertools import permutations
+
 class Policy:
     def __init__(self, policy_name, priority_fn=None, is_preemptive=False,
-                 is_dynamic_priority=False, calculate_overtake_time=lambda j1, j2, t: None):
+                 is_dynamic_priority=False,
+                 calculate_overtake_time=lambda j1, j2, t: None):
         self.policy_name = policy_name
         self.priority_fn = priority_fn
         self.is_preemptive = is_preemptive
@@ -16,3 +19,16 @@ NPPrio12 = Policy("NPPrio12", priority_fn=lambda r, s, t, k: -k, is_preemptive=F
 PPrio12 = Policy("PPrio12", priority_fn=lambda r, s, t, k: -k, is_preemptive=True)
 NPPrio21 = Policy("NPPrio21", priority_fn=lambda r, s, t, k: k, is_preemptive=False)
 PPrio21 = Policy("PPrio21", priority_fn=lambda r, s, t, k: k, is_preemptive=True)
+
+def StrictPriorities(k, is_preemptive=True):
+    """
+    returns list of k! strict priority policies
+    """
+    policies = []
+
+    for order in permutations(range(1, k+1)):
+        name = "PPrio" + "".join(map(str, order))
+        priority_fn = lambda r, s, t, j, order=order: -order.index(j)
+        policies.append(Policy(name, priority_fn, is_preemptive=is_preemptive))
+        
+    return policies 
