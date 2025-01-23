@@ -6,7 +6,7 @@ plt.rcParams.update({'font.size': 14})
 
 # CONSTANTS
 
-rhos = np.linspace(0.8, 1, 15)[:-1]
+rhos = np.linspace(0.8, 1, 15)[8:-1]
 
 
 # HELPER FUNCTIONS
@@ -96,8 +96,20 @@ def compute_best_costs(exp_name, mu1, mu2, c1, c2, p1, policy_fam):
     return [compute_best_cost_for_rho(exp_name, mu1, mu2, c1, c2,
                 p1, rho, policy_fam) for rho in rhos]
 
+def time_avg_costs(rhos, costs, p1=0.5):
+    mu1, mu2 = 3, 1
+    # l * (p1 / mu1 + (1-p1) / mu2) = rho
+    ls = rhos / (p1 / mu1 + (1-p1) / mu2)
+    return ls * costs
+
+def time_avg_costs2(rhos, costs, p1=0.5):
+    mu1, mu2, mu3 = 1, 3, 3
+    # l * (p1 / mu1 + (1-p1) / mu2) = rho
+    ls = rhos / (1/3 / mu1 + 1/3 / mu2 + 1/3/mu3)
+    return ls * costs
+
 def gen_plot(exp_name, costs_by_policy, p1=0.5):
-    # given costs_by_policy: dict[str->list[float]] (or read from file)
+    # given costs_by_policy: dict[str->list[list[float]]] (or read from file)
     costs_fname = f'{exp_name}/costs{p1}.json'
     if costs_by_policy:
         json.dump(costs_by_policy, open(costs_fname, 'w'))
@@ -106,35 +118,120 @@ def gen_plot(exp_name, costs_by_policy, p1=0.5):
 
     #del costs_by_policy['FCFS'] # don't plot FCFS if too far off
     plt.figure()
-    plot_style = {'FCFS':('-', 1, 'blue', 0.5),
-                  r'gen-$c\mu$': ('--', 1, 'green', 0.5),
+    plot_style = {'FCFS':('-', 2, 'blue', 0.7),
+                  r'gen-$c\mu$': ('--', 2, 'green', 0.7),
                   #'Lookahead*': ('--', 2, 'orange', 0.5),
-                  'PPrio':(':', 2, 'magenta', 0.5),
+                  'PPrio':(':', 2, 'purple', 1),
                   #'AccPrio*': ('-.', 2, 'gray', 0.5),                  
-                  'Aalto':('-.', 1, 'cyan', 0.5),
-                  'Whittle':('-', 1, 'red', 0.5),                  }
+                  'Aalto':('-', 2, 'orange', 0.7),
+                  'Whittle':('--', 2, 'red', 0.7),                  }
 
     for policy in plot_style:
         if policy in costs_by_policy:
             costs = costs_by_policy[policy]
+
+            costs = time_avg_costs(rhos, costs, p1)
+            
             ls, lw, color, alpha = plot_style[policy]
 
             if policy == "Whittle":
                 policy = "Us"
+
+            if policy == "PPrio":
+                policy = "Prio"
+
             
-            plt.plot(rhos, costs, #np.delete(rhos,-3), np.delete(costs,-3),
-                     label=policy, linestyle=ls, linewidth=lw,
-                 color=color, alpha=alpha)
+            #print(rhos) print(costs)
+            plt.plot(
+                #list(rhos[::2]),list(costs[::2]) ,
+                #np.delete(rhos, [1, 4,8, 10]), np.delete(costs, [1, 4,8, 10]),
+                np.delete(rhos, [5, 10]),np.delete(costs, [5, 10]),
+                #np.delete(rhos, [-4]),np.delete(costs, [-4]),
+                #rhos, costs,
+                label=policy,linestyle=ls, linewidth=lw, color=color, alpha=alpha)
 
     #plt.ylim(-0.1e6, 1.45e6) 2deadline drastic
     #plt.ylim(-25, 850) linear drastic
     #plt.ylim(0, 3000) # polynomial balanced
-    #plt.ylim(0, 20) # 2 deadline balanced
+    #plt.ylim(0, 25) # 2 deadline balanced
     #plt.ylim(-300, 20000)
-    #plt.ylim(0, 5000)
-    plt.xlim(0.8, 0.986)
+    plt.ylim(0, 3000)
+    plt.xlim(0.8, 0.97)
     plt.xlabel('Load')
-    plt.ylabel('Cost')
-    plt.legend()
+    plt.ylabel('Time-avg Total Holding Cost')
+    plt.legend(loc = "upper left")
     plt.savefig(f'{exp_name}/rhos-vs-costs-{p1}.png')
 
+
+
+def gen_plot2(exp_names, costs, p1=0.5):
+    """ Generates a plot using the average cost across multiple experiment runs.
+
+    Args:
+        exp_names (list[str]): List of experiment names (directories containing cost JSONs).
+        rhos (list): List of load values.
+        p1 (float): Probability threshold for filename storage.
+    """
+    
+    all_costs_by_policy = []
+    
+    # Load all experiment data
+    for exp_name in exp_names:
+        costs_fname = f'{exp_name}/costs{p1}.json'
+        if os.path.exists(costs_fname):
+            with open(costs_fname, 'r') as f:
+                all_costs_by_policy.append(json.load(f))
+        else:
+            print(f"Warning: {costs_fname} not found.")
+    
+    if not all_costs_by_policy:
+        print("No valid experiment data found. Exiting.")
+        return
+
+    # Compute the average cost for each policy
+    avg_costs_by_policy = {}
+    policies = all_costs_by_policy[0].keys()  # Use first experiment to get policies
+
+    for policy in policies:
+        if all(policy in costs for costs in all_costs_by_policy):  # Ensure policy exists in all runs
+            avg_costs_by_policy[policy] = np.mean(
+                [np.array(costs[policy]) for costs in all_costs_by_policy], axis=0
+            )
+
+         
+    plot_style = {'FCFS':('-', 2, 'blue', 0.7),
+                  r'gen-$c\mu$': ('--', 2, 'green', 0.7),
+                  #'Lookahead*': ('--', 2, 'orange', 0.5),
+                  'PPrio':(':', 2, 'purple', 1),
+                  #'AccPrio*': ('-.', 2, 'gray', 0.5),                  
+                  'Aalto':('-', 2, 'orange', 0.7),
+                  'Whittle':('--', 2, 'red', 0.7),                  }
+
+    # Generate plot
+    plt.figure()
+
+    for policy, (ls, lw, color, alpha) in plot_style.items():
+        if policy in avg_costs_by_policy:
+            costs = time_avg_costs2(rhos, avg_costs_by_policy[policy])
+            
+            if policy == "Whittle":
+                policy = "Us"
+
+            if policy == "PPrio":
+                policy = "Prio"
+                
+            plt.plot(np.delete(rhos, [2, 4, 8]), np.delete(costs, [2, 4, 8]),
+                     label=policy, linestyle=ls, linewidth=lw, color=color, alpha=alpha)
+
+    plt.ylim(0, 10000)
+    plt.xlim(0.8, 0.97)
+    plt.xlabel('Load')
+    plt.ylabel('Time-avg Total Holding Cost')    
+    plt.legend(loc="upper left")
+    #plt.title(f"Averaged Cost Plot for {', '.join(exp_names)}")
+    
+    # Save the plot
+    plot_filename = f"averaged_plot_{'_'.join(exp_names)}.png"
+    plt.savefig(plot_filename)
+    print(f"Plot saved as {plot_filename}")
+    #plt.close()

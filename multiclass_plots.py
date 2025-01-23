@@ -6,7 +6,7 @@ plt.rcParams.update({'font.size': 14})
 
 # CONSTANTS
 
-rhos = np.linspace(0.8, 1, 10)[:-1]
+rhos = np.linspace(0.8, 1, 15)[8:-1]
 accprio_b1s = np.logspace(0, np.log(30), 12, base=np.e) #np.linspace(1, 30, 12)
 
 # HELPER FUNCTIONS
@@ -56,7 +56,7 @@ def compute_costs(exp_name, service_rates, cost_rates, cumulative_cost_rates, rh
 
 def run_multiclass_poly_exp(service_rates, cost_rates, p1=0.5):
     # ci(t) = ai t^2 + bi t + ci where (ai, bi, ci) in cost_rates
-    exp_name = 'multiclass_exp3'#+str(round(np.random.rand(),2))
+    exp_name = 'multiclass_exp4'#+str(round(np.random.rand(),2))
 
     # remember experiment parameters
     params = {'rhos':list(rhos),
@@ -74,13 +74,18 @@ def run_multiclass_poly_exp(service_rates, cost_rates, p1=0.5):
         return policy.QuadraticAalto(arrival_rates, service_rates, cost_rates)
     gen_cmu = policy.QuadraticGenCMU(service_rates, cost_rates)
 
+    acc_prios = [policy.LinearAccPrio([0, 0, 0], [b1, b2, b3])
+                 for b1 in np.logspace(0, np.log(5), 4, base=np.e)
+                 for b2 in np.logspace(0, np.log(5), 4, base=np.e)
+                 for b3 in np.logspace(0, np.log(5), 4, base=np.e)]
+
     policies = {
-                'PPrio': policy.StrictPriorities(len(service_rates)),            
-                r'gen-$c\mu$': [gen_cmu],
-                'Whittle': [whittle],
-                'FCFS':[policy.FCFS],
-                #'AccPrio*': accprios,
-                'Aalto': [aalto]
+                #'PPrio': policy.StrictPriorities(len(service_rates)),            
+                #r'gen-$c\mu$': [gen_cmu],
+                #'Whittle': [whittle],
+                #'FCFS':[policy.FCFS],
+                'AccPrio*': acc_prios,
+                #'Aalto': [aalto]
                 }
 
     costs_by_policy = {name:  [compute_costs(exp_name, service_rates, cost_rates,
@@ -120,15 +125,16 @@ if __name__ == "__main__":
     mu1, mu2, c1, c2, d1, d2 = 3, 1, 5, 1, 10, 5
 
     k=3
-    cost_rates = [np.random.rand(3) for _ in range(k)]
-    #cost_rates = [(10, 0, 0), (0, 1, 100), (0, 1, 200)]
+    #cost_rates = [np.random.rand(3) for _ in range(k)]
+    cost_rates = [(20, 0, 0), (0, 2, 100), (0, 1, 200)]
     #cost_rates = [(1, 0, 0), (0.5, 1, 2)]
     #cost_rates = [(0, 0, 0, 1), (100, 0, 0, 0)]
     #run_multiclass_poly_exp([1, 3, 3], cost_rates)
-    #run_multiclass_poly_exp([1, 3, 3], cost_rates)
-    run_multiclass_poly_exp([1]*k, cost_rates)
+    run_multiclass_poly_exp([1, 3, 3], cost_rates)
+    #run_multiclass_poly_exp([1]*k, cost_rates)
 
     #gen_plot('linear_cost_exp3', None, p1 = 0.5)
-    plot.gen_plot('multiclass_exp2', None, p1=0.5)
+    #plot.gen_plot('multiclass_exp4', None, p1=0.5)
+    #plot.gen_plot2(['multiclass_exp3','multiclass_exp4'], None, p1=0.5)
 
     plt.show()
