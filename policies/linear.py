@@ -3,7 +3,8 @@ import logging
 
 def LinearAccPrio(a_values, b_values, is_preemptive=True):
     V = lambda r, s, t, k: a_values[k-1] + b_values[k-1] * t
-    policy_name = "PAAPQ" if is_preemptive else "NPAAPQ"
+    policy_name = ("PAAPQ" if is_preemptive else "NPAAPQ")\
+        + f"({a_values, b_values})" 
 
     def calculate_overtake_time(job1, job2, current_time):
         i1, i2 = job1.job_class.index-1, job2.job_class.index-1
