@@ -22,8 +22,6 @@ def nextGittins(service_rates, holding_cost_rates, sim_res,
     return policy
 '''
 
-alpha = 0.2
-
 def ECost(arrival_rates, holding_cost_rates, sim_res):
     s = 0.0
     for l, c, Ti in zip(arrival_rates, holding_cost_rates, sim_res):
@@ -72,17 +70,46 @@ def gittinsV_val(service_rates, holding_cost_rates, sim_res,
     V_values = np.array(V_values)
     return V_values
 
-# Iteratively generates gittins policy by running simulations and updating policy
-def iterativeGittins(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10,
+def WhittleV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
             age_values=np.arange(0, 15, 0.1)):
-    # list[float] * list[float -> float] * maxItr -> Policy
-    # Initial policy currently Whittle
     V_values = []
     for l, mu, c in zip(arrival_rates, service_rates, inst_holding_cost_rates):
         Ti = [random.expovariate(mu - l) for _ in range(10**4)]
         Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
         V_values.append(Vi_values)
-    V_values = np.array(V_values)
+    return np.array(V_values)
+
+def cmuV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
+            age_values=np.arange(0, 15, 0.1)):
+    V_values = []
+    for mu, c in zip(service_rates, inst_holding_cost_rates):
+        Vi_values = np.array([c(t)*mu for t in age_values])
+        V_values.append(Vi_values)
+    return np.array(V_values)
+
+def StrictPriorityV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
+            age_values=np.arange(0, 15, 0.1)):
+    V_values = []
+    for mu in zip(service_rates):
+        Vi_values = np.array([mu for t in age_values])
+        V_values.append(Vi_values)
+    return np.array(V_values)
+
+def FCFSV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
+            age_values=np.arange(0, 15, 0.1)):
+    V_values = []
+    for mu in zip(service_rates):
+        Vi_values = np.array([t for t in age_values])
+        V_values.append(Vi_values)
+    return np.array(V_values)
+
+# Iteratively generates gittins policy by running simulations and updating policy
+def iterativeGittins(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
+            age_values=np.arange(0, 15, 0.1), initialV=WhittleV):
+    # list[float] * list[float -> float] * maxItr -> Policy
+    # Initialize V values, defaults to Whittle
+    V_values = initialV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
+                        age_values)
     V = lambda r, s, t, k : np.interp(t, age_values, V_values[k-1])
     policy = AgeBasedPrio(V, age_values)
 
@@ -138,28 +165,24 @@ if __name__ == "__main__":
     # c1, C1 = lambda t : 5 if t > 10 else 0, lambda t : 0 if t < 10 else 5*(t-10)
     # c2, C2 = lambda t : 1 if t > 5 else 0, lambda t : 0 if t < 5 else t-5
 
-    # GittinsIdx = iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
-    # run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
+    # GittinsIdx = iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, initialV=cmuV)
+    # MG1_ECost_tests("Gittins", [l1, l2], [mu1, mu2], [C1, C2], GittinsIdx)
     # WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
-    # run_2Class_MG1_tests("Whittle", l1, l2, lib.exp(mu1), lib.exp(mu2), WhittleIdx)
+    # MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
 
     # Gittins vs. Whittle on weird functions
     l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
     dead1 = lambda t : 5 if t > 8 else 0, lambda t : 0 if t < 10 else 5*(t-8)
-    dead2 = lambda t : 2 if t > 10 else (1 if t > 5 else 0), lambda t : 2*t-15 if t > 10 else (t-5 if t > 5 else 0)
-    hw = lambda t : 5 if t > 3 and t < 7 else 0, lambda t : 20 if t > 7 else (5*(t-3) if t > 3 else 0)
-    quad1 = lambda t : t*t-2*t+1, lambda t : t*t*t/3-t*t+t
-    quad2 = lambda t : t*t-4*t+4, lambda t : t*t*t/3-2*t*t+4*t
-    wave = lambda t : 1+math.sin(t), lambda t : 1+t-math.cos(t)
-    bigWave = lambda t : 5*(1+math.sin(t)), lambda t : 5*(1+t-math.cos(t))
+    dead2 = lambda t : 5 if t > 10 else (1 if t > 5 else 0), lambda t : 5*(t-10)+5 if t > 10 else (t-5 if t > 5 else 0)
+    dead3 = lambda t : 3 if t > 7 else (2 if t > 3 else 0), lambda t : 3*(t-7)+8 if t > 7 else (2*(t-3) if t > 3 else 0)
+    quad1 = lambda t : t*t+2*t+1, lambda t : t*t*t/3+t*t+t
+    quad2 = lambda t : t*t+4*t+4, lambda t : t*t*t/3+2*t*t+4*t
     osc = lambda t : math.exp(t) + math.sin(t), lambda t : math.exp(t) - math.cos(t)
-    inv = lambda t : 1/(t+1), lambda t : math.log(t+1)
-    invsq = lambda t : 1/((t+1)*(t+1)), lambda t : -1/(t+1)+1
 
-    c1, C1 = hw
-    c2, C2 = inv
+    c1, C1 = dead2
+    c2, C2 = dead3
 
-    GittinsIdx = iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 20)
+    GittinsIdx = iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
     MG1_ECost_tests("Gittins", [l1, l2], [mu1, mu2], [C1, C2], GittinsIdx)
     WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
     MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
