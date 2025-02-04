@@ -4,6 +4,7 @@ import lib, simulations
 import logging
 from tests import run_2Class_MG1_tests
 import math
+import matplotlib.pyplot as plt
 
 '''
 #Generates the next gittins policy given simulation results
@@ -104,9 +105,9 @@ def FCFSV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cos
     return np.array(V_values)
 
 # Iteratively generates gittins policy by running simulations and updating policy
-def iterativeGittins(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
+def iterativeGittins_V(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
             age_values=np.arange(0, 15, 0.1), initialV=WhittleV):
-    # list[float] * list[float -> float] * maxItr -> Policy
+    # list[float] * list[float -> float] * maxItr -> V function
     # Initialize V values, defaults to Whittle
     V_values = initialV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
                         age_values)
@@ -139,7 +140,28 @@ def iterativeGittins(arrival_rates, service_rates, inst_holding_cost_rates, cum_
         V = lambda r, s, t, k : np.interp(t, age_values, V_values[k-1])
         policy = AgeBasedPrio(V, age_values)
 
-    return policy
+    return V
+
+# Iteratively generates gittins policy by running simulations and updating policy
+def iterativeGittins(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
+            age_values=np.arange(0, 15, 0.1), initialV=WhittleV):
+    # list[float] * list[float -> float] * maxItr -> Policy
+    V = iterativeGittins_V(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr, alpha,
+            age_values, initialV)
+    return AgeBasedPrio(V, age_values)
+
+def plotGittinsV(fileName, arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
+            age_values=np.arange(0, 15, 0.1), initialV=WhittleV):
+    V = iterativeGittins_V(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr, alpha,
+            age_values, initialV)
+    for k in range(len(arrival_rates)):
+        plt.plot(age_values, V(None, None, age_values, k), label=f"Class {k+1}")
+    plt.xlabel("T")
+    plt.ylabel("r*")
+    plt.title("r*(T)")
+    plt.legend()
+    plt.savefig(fileName)
+    plt.show()
 
 if __name__ == "__main__":
     # # Fixed identical holding costs test of Gittins and FCFS
@@ -170,19 +192,26 @@ if __name__ == "__main__":
     # WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
     # MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
 
-    # Gittins vs. Whittle on weird functions
+    # # Gittins vs. Whittle on weird functions
+    # l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
+    # dead1 = lambda t : 5 if t > 8 else 0, lambda t : 0 if t < 10 else 5*(t-8)
+    # dead2 = lambda t : 5 if t > 10 else (1 if t > 5 else 0), lambda t : 5*(t-10)+5 if t > 10 else (t-5 if t > 5 else 0)
+    # dead3 = lambda t : 3 if t > 7 else (2 if t > 3 else 0), lambda t : 3*(t-7)+8 if t > 7 else (2*(t-3) if t > 3 else 0)
+    # quad1 = lambda t : t*t+2*t+1, lambda t : t*t*t/3+t*t+t
+    # quad2 = lambda t : t*t+4*t+4, lambda t : t*t*t/3+2*t*t+4*t
+    # osc = lambda t : math.exp(t) + math.sin(t), lambda t : math.exp(t) - math.cos(t)
+
+    # c1, C1 = dead2
+    # c2, C2 = dead3
+
+    # GittinsIdx = iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
+    # MG1_ECost_tests("Gittins", [l1, l2], [mu1, mu2], [C1, C2], GittinsIdx)
+    # WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
+    # MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
+
+    # Plotting r*
     l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
-    dead1 = lambda t : 5 if t > 8 else 0, lambda t : 0 if t < 10 else 5*(t-8)
-    dead2 = lambda t : 5 if t > 10 else (1 if t > 5 else 0), lambda t : 5*(t-10)+5 if t > 10 else (t-5 if t > 5 else 0)
-    dead3 = lambda t : 3 if t > 7 else (2 if t > 3 else 0), lambda t : 3*(t-7)+8 if t > 7 else (2*(t-3) if t > 3 else 0)
-    quad1 = lambda t : t*t+2*t+1, lambda t : t*t*t/3+t*t+t
-    quad2 = lambda t : t*t+4*t+4, lambda t : t*t*t/3+2*t*t+4*t
-    osc = lambda t : math.exp(t) + math.sin(t), lambda t : math.exp(t) - math.cos(t)
+    c1, C1 = lambda t : 5 if t > 10 else 0, lambda t : 0 if t < 10 else 5*(t-10)
+    c2, C2 = lambda t : 1, lambda t : t
 
-    c1, C1 = dead2
-    c2, C2 = dead3
-
-    GittinsIdx = iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
-    MG1_ECost_tests("Gittins", [l1, l2], [mu1, mu2], [C1, C2], GittinsIdx)
-    WhittleIdx = Whittle([l1, l2], [mu1, mu2], [c1, c2])
-    MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
+    plotGittinsV('gittinsR.png', [l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, initialV=WhittleV)
