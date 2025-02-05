@@ -185,6 +185,11 @@ def run_age_based_tests(l1, l2, mu1, mu2):
 
 def run_age_based_tests2():
     print("**2 CLASS AGE-BASED POLICY M/M/1 TESTS**")
+
+    mu1, mu2, c1, c2, d1, d2 = 2, 2, 3, 3, 7, 7    
+    age_values = np.linspace(0, max(d1, d2)*1.1, 20)
+
+    
     # Define different load conditions (Low, Medium, High)
     load_conditions = [
         (0.2 * mu1, 0.2 * mu2),  # Low Load
@@ -198,6 +203,11 @@ def run_age_based_tests2():
         lambda t: 0.5*t**2 + t + 2  # Quadratic cost for class 2
     ]
 
+    # holding_cost_rates = [
+    #     lambda t : c1 if t > d1 else 0,
+    #     lambda t : c2 if t > d2 else 0
+    # ]
+
     for idx, (l1, l2) in enumerate(load_conditions):
         assert l1/mu1 + l2/mu2 < 1, "Load must be less than 1"
         
@@ -207,7 +217,8 @@ def run_age_based_tests2():
         run_2Class_MG1_tests(test_name_cmu, l1, l2, lib.exp(mu1), lib.exp(mu2), GenCMU)
 
         # Test Whittle Policy
-        WhittlePolicy = policy.Whittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2], holding_cost_rates=holding_cost_rates)
+        WhittlePolicy = policy.Whittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2],
+                                       holding_cost_rates=holding_cost_rates, age_values = age_values)
         test_name_whittle = f"2cMM1Whittle_Load{idx+1}"
         run_2Class_MG1_tests(test_name_whittle, l1, l2, lib.exp(mu1), lib.exp(mu2), WhittlePolicy)
 
@@ -223,6 +234,6 @@ if __name__ == "__main__":
     
     # run_basic_tests(l, mu, l1, l2, mu1, mu2)
     # run_linear_tests(l1, l2, mu1, mu2)
-    run_quadratic_tests(l1, l2, mu1, mu2)
+    # run_quadratic_tests(l1, l2, mu1, mu2)
     # run_age_based_tests(l1, l2, mu1, mu2)
-    # run_age_based_tests2()
+    run_age_based_tests2()
