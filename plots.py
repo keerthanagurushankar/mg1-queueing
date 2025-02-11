@@ -1,6 +1,7 @@
 import math, random, numpy as np
 import matplotlib.pyplot as plt
-import lib, simulations, policies as policy, gittins as gtn
+import lib, simulations, policies as policy
+import policies.gittins as gttns
 import json, os, logging
 
 # CONSTANTS
@@ -194,7 +195,7 @@ def run_gittins_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2,
 
     gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values)
     whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
-    gittins = lambda l1, l2: gtn.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
+    gittins = lambda l1, l2: gttns.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
                                                      maxItr=maxItr, alpha=alpha, age_values=age_values)
     policies = {'FCFS': [policy.FCFS], # "AccPrio*":accprios,
                 'PPrio':[policy.PPrio12, policy.PPrio21], #'Lookahead*' : lookaheads,
@@ -211,7 +212,7 @@ def run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.
     exp_name = 'normalized_exp'
 
     whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
-    gittins = lambda l1, l2: gtn.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
+    gittins = lambda l1, l2: gttns.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
                                                      maxItr=maxItr, alpha=alpha, age_values=age_values)
     policies = {'FCFS': [policy.FCFS],
                 'Whittle': [whittle],
