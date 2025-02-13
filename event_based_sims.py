@@ -1,4 +1,5 @@
 import heapq
+from collections import deque
 import random, math
 import lib
 import logging
@@ -26,7 +27,7 @@ class JobClass:
                 self.arrival_sequence = json.load(f)
                 self.sequence_index = -1
 
-        self.job_queue = []
+        self.job_queue = deque([])
 
     def generate_next_job(self, current_time):
         if self.arrival_sequence and self.sequence_index < len(self.arrival_sequence)-1:
@@ -56,7 +57,7 @@ class MG1:
         self.job_classes = job_classes
         self.policy = policy
         
-        self.simulation_time = 10**5 #simulation_time
+        self.simulation_time = 10**6 #simulation_time
         self.inspection_rate = 0.1 #inspection_rate
         
         # initialize priority_function of job classes
@@ -137,7 +138,7 @@ class MG1:
             
         elif self.policy.is_preemptive:
             if new_job.job_class.job_queue or self.current_job.job_class == new_job.job_class:
-                heapq.heappush(new_job.job_class.job_queue, new_job)
+                new_job.job_class.job_queue.append(new_job)
             else:
                 # update current_job's priority [only works if prio indep of remaining_time]
                 self.current_job.priority = self.current_job.job_class.priority(
@@ -151,10 +152,10 @@ class MG1:
                 elif self.policy.is_dynamic_priority:
                     raise Exception("Not Implemented")
                 else:
-                    heapq.heappush(new_job.job_class.job_queue, new_job)                    
+                    new_job.job_class.job_queue.append(new_job)                    
         
         else: # [non preemptive and busy]
-            heapq.heappush(new_job.job_class.job_queue, new_job)
+            new_job.job_class.job_queue.append(new_job)            
 
     def handle_departure(self, event):
         if self.current_job != event.job or self.current_time != \
@@ -176,7 +177,7 @@ class MG1:
         time_in_service = self.current_time - self.current_service_start_time
         self.current_job.remaining_time = self.current_job.remaining_time - time_in_service
         
-        heapq.heappush(self.current_job.job_class.job_queue, self.current_job)
+        self.current_job.job_class.job_queue.appendleft(self.current_job)
         self.current_job, self.current_service_start_time = None, None
     
     def start_service(self, job=None):
@@ -191,7 +192,7 @@ class MG1:
             self.current_job = job
         else:
             top_job_class = self.get_updated_top_priorities()[1]
-            self.current_job = heapq.heappop(top_job_class.job_queue)
+            self.current_job = top_job_class.job_queue.popleft()
 
         assert self.current_time >= self.current_job.arrival_time, \
             "Tried to start service before arrival"

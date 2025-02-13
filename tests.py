@@ -61,19 +61,19 @@ def run_2Class_MG1_tests(test_label, l1, l2, S1, S2, policy):
 
 def run_basic_tests(l, mu, l1, l2, mu1, mu2):
     print("**MG1 FCFS TESTS**")    
-    # run_MG1_tests("MM1", l, lib.exp(mu))
-    # run_MG1_tests("MD1", l, lib.det(mu))
-    # run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
-    # run_MG1_tests("MPar1",l,lib.pareto(mu))
-    # run_2Class_MG1_tests("2cMM1", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
+    run_MG1_tests("MM1", l, lib.exp(mu))
+    run_MG1_tests("MD1", l, lib.det(mu))
+    run_MG1_tests("MH1", l, lib.hyperexponential(mu,Csq=5))
+    run_MG1_tests("MPar1",l,lib.pareto(mu))
+    run_2Class_MG1_tests("2cMM1", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
 
     print("**2 CLASS NPPRIO TESTS**")
-    # run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMD1b", l2, l1, lib.det(mu2), lib.det(mu1), policy.NPPrio12)
-    # run_2Class_MG1_tests("2cMH1a", l1, l2, lib.hyperexponential(mu1, Csq=5),
-    #                     lib.hyperexponential(mu2, Csq=10), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMM1a", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMM1b", l2, l1, lib.exp(mu2), lib.exp(mu1), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMD1a", l1, l2, lib.det(mu1), lib.det(mu2), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMD1b", l2, l1, lib.det(mu2), lib.det(mu1), policy.NPPrio12)
+    run_2Class_MG1_tests("2cMH1a", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                        lib.hyperexponential(mu2, Csq=10), policy.NPPrio12)
 
 
     print("**2 CLASS PPRIO TESTS**")
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     l, mu = .4, 2
     l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1    # 0.15, 0.45; 0.65625
     
-    # run_basic_tests(l, mu, l1, l2, mu1, mu2)
+    run_basic_tests(l, mu, l1, l2, mu1, mu2)
     run_linear_tests(l1, l2, mu1, mu2)
     # run_quadratic_tests(l1, l2, mu1, mu2)
     # run_age_based_tests(l1, l2, mu1, mu2)
