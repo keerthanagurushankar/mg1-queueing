@@ -151,9 +151,10 @@ class MG1:
                 for job in self.job_queue:
                     job_priority = job.current_priority(self.current_time)
                     if job_priority > current_job_priority + 0.1:
-                        logging.warn(f"Not working on highest prio job {current_job_priority, job_priority}"
-                          f"{self.current_job.job_class.index, job.job_class.index}")
-                    #assert job_priority <= current_job_priority + 0.1, "Not working on highest prio job" + f"\
+                        logging.warn(f"At time {self.current_time}, "
+                          f"Not working on highest prio job {current_job_priority} < {job_priority}"
+                          f"with respective classes {self.current_job.job_class.index, job.job_class.index}")
+                    # assert job_priority <= current_job_priority + 0.1, "Not working on highest prio job" + f"\
                      # {current_job_priority, job_priority, self.current_job.job_class.index, job.job_class.index}" 
             else:
                 for job in self.job_queue:
@@ -232,7 +233,7 @@ class MG1:
             # if a higher b job just arrived, it may preempt the low b job if it hasn't completed service
             t_overtake = self.policy.calculate_overtake_time(self.current_job, new_job, self.current_time)
             if t_overtake: # and t_overtake < self.current_departure_event.time:
-                preemption_event = Event('PreemptionCheck', t_overtake, new_job)             
+                preemption_event = Event('PreemptionCheck', t_overtake, new_job)          
         else:
             # when starting new service, check and schedule if any job in queue may grow to overtake priority
             min_overtake_time, overtake_job = float('inf'), None

@@ -3,7 +3,7 @@ from collections import deque
 import random, math
 import lib
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 class Event:
     def __init__(self, event_type, time, job=None):
@@ -215,7 +215,7 @@ class MG1:
                                          (self.current_job, overtake_job))
 
         if preemption_event:
-            logging.debug(f"I'm scheduling preemption check at {preeemption_event.time}")
+            logging.debug(f"I'm scheduling preemption check at {preemption_event.time}")
             heapq.heappush(self.event_queue, preemption_event)
 
     def handle_preemption_check(self, event):        
