@@ -1,6 +1,8 @@
-import random, numpy as np
-from .age_based import AgeBasedPrio
-import lib, simulations
+import numpy as np
+from .age_based import AgeBasedPrio, Whittle
+import lib
+import time_based_sims as simulations
+# import simulations
 import logging
 import matplotlib.pyplot as plt
 
@@ -59,45 +61,18 @@ def gittinsV_val(service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
     V_values = np.array(V_values)
     return V_values
 
-def WhittleV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
-            age_values=np.arange(0, 15, 0.1)):
-    V_values = []
-    for l, mu, c in zip(arrival_rates, service_rates, inst_holding_cost_rates):
-        Ti = [random.expovariate(mu - l) for _ in range(10**4)]
-        Vi_values = np.array([mu * np.mean([c(t + T) for T in Ti]) for t in age_values])
-        V_values.append(Vi_values)
-    return np.array(V_values)
-
-def cmuV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
-            age_values=np.arange(0, 15, 0.1)):
-    V_values = []
-    for mu, c in zip(service_rates, inst_holding_cost_rates):
-        Vi_values = np.array([c(t)*mu for t in age_values])
-        V_values.append(Vi_values)
-    return np.array(V_values)
-
-def StrictPriorityV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
-            age_values=np.arange(0, 15, 0.1)):
-    V_values = []
-    for mu in zip(service_rates):
-        Vi_values = np.array([mu for t in age_values])
-        V_values.append(Vi_values)
-    return np.array(V_values)
-
-def FCFSV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
-            age_values=np.arange(0, 15, 0.1)):
-    V_values = []
-    for mu in zip(service_rates):
-        Vi_values = np.array([t for t in age_values])
-        V_values.append(Vi_values)
-    return np.array(V_values)
-
 # Iteratively generates gittins policy by running simulations and updating policy
 def iterativeGittins_V(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
-            age_values=np.arange(0, 15, 0.1), initialV=WhittleV, gttns_fn=gittins):
-    # Initialize V values, defaults to Whittle
-    V_values = initialV(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates,
-                        age_values)
+            age_values=np.arange(0, 15, 0.1), initialPolicy=None, gttns_fn=gittins):
+    # Initialize policy and V values, defaults to Whittle
+    if initialPolicy is None: policy = Whittle(arrival_rates, service_rates, inst_holding_cost_rates, age_values)
+    else: policy = initialPolicy
+    
+    V_values = []
+    for k in range(len(arrival_rates)):
+        Vi_values = np.array([policy.priority_fn(None, None, t, k+1) for t in age_values])
+        V_values.append(Vi_values)
+    V_values = np.array(V_values)
     V = lambda r, s, t, k : np.interp(t, age_values, V_values[k-1])
     policy = AgeBasedPrio(V, age_values)
 
@@ -131,15 +106,15 @@ def iterativeGittins_V(arrival_rates, service_rates, inst_holding_cost_rates, cu
 
 # Iteratively generates gittins policy by running simulations and updating policy
 def iterativeGittins(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
-            age_values=np.arange(0, 15, 0.1), initialV=WhittleV, gttns_fn=gittins):
+            age_values=np.arange(0, 15, 0.1), initialPolicy=None, gttns_fn=gittins):
     V = iterativeGittins_V(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr, alpha,
-            age_values, initialV, gttns_fn)
+            age_values, initialPolicy, gttns_fn)
     return AgeBasedPrio(V, age_values)
 
 def plotGittinsV(fileName, arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr=10, alpha=0.2,
-            age_values=np.arange(0, 15, 0.1), initialV=WhittleV, gttns_fn=gittins):
+            age_values=np.arange(0, 15, 0.1), initialPolicy=None, gttns_fn=gittins):
     V = iterativeGittins_V(arrival_rates, service_rates, inst_holding_cost_rates, cum_holding_cost_rates, maxItr, alpha,
-            age_values, initialV, gttns_fn)
+            age_values, initialPolicy, gttns_fn)
     for k in range(len(arrival_rates)):
         plt.plot(age_values, V(None, None, age_values, k), label=f"Class {k+1}")
     plt.xlabel("T")
@@ -155,4 +130,4 @@ if __name__ == "__main__":
     c1, C1 = lambda t : 3 if t > 10 else 0, lambda t : 0 if t < 10 else 3*(t-10)
     c2, C2 = lambda t : 1 if t > 5 else 0, lambda t : 0 if t < 5 else 1*(t-5)
 
-    plotGittinsV('gittinsR.png', [l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, initialV=WhittleV)
+    plotGittinsV('gittinsR.png', [l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, initialPolicy=None)
