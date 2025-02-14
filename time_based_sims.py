@@ -1,4 +1,5 @@
 import heapq
+from collections import deque
 import math
 import json, os
 
@@ -8,13 +9,14 @@ logging.basicConfig(level=logging.INFO)
 from simulations import Job, JobClass
 
 class MG1:
-    def __init__(self, job_classes, policy, simulation_time=10**5, time_step=0.01):
+    def __init__(self, job_classes, policy, simulation_time=10**5, time_step=0.01, ClassFCFS=True):
         # Parameters
         self.job_classes = job_classes
         self.policy = policy
         
         self.simulation_time = simulation_time
         self.time_step = time_step
+        self.ClassFCFS = ClassFCFS
         
         # initialize priority_function of job classes
         for k, job_class in enumerate(job_classes):
@@ -27,6 +29,8 @@ class MG1:
 
         # System state
         self.nextArrivals = [] #holds the next job to arrive of each class
+        if ClassFCFS:
+            self.classQueues = {job_class: deque() for job_class in job_classes}
         self.job_queue = [] # holds waiting jobs in order of priority
         self.current_time = 0
         self.current_job = None
@@ -51,7 +55,12 @@ class MG1:
     # Any jobs that have arrived by current_time pushed in queue and replaced by next arrival
         arrivingJobs = filter(lambda j : j.arrival_time <= self.current_time, self.nextArrivals)
         for job in arrivingJobs:
-            heapq.heappush(self.job_queue, job)
+            if self.ClassFCFS:
+                if not self.classQueues[job.job_class]:
+                    heapq.heappush(self.job_queue, job)
+                self.classQueues[job.job_class].append(job)
+            else: heapq.heappush(self.job_queue, job)
+
             self.nextArrivals.remove(job)
             nextJob = job.job_class.generate_next_job(self.current_time)
             self.nextArrivals.append(nextJob)
@@ -93,6 +102,11 @@ class MG1:
         self.current_job.remaining_time -= self.time_step
         if self.current_job.remaining_time <= 0.0:
             self.record_metrics(self.current_job, self.current_time)
+            if self.ClassFCFS:
+                assert self.current_job == self.classQueues[self.current_job.job_class].popleft()
+                if self.classQueues[self.current_job.job_class]:
+                    nextJob = self.classQueues[self.current_job.job_class][0]
+                    heapq.heappush(self.job_queue, nextJob)
             self.current_job = None
     
     def record_metrics(self, job, departure_time):

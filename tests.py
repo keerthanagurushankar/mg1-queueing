@@ -2,8 +2,8 @@ import math, random
 import numpy as np
 
 # import simulations
-# import time_based_sims as simulations
-import event_based_sims as simulations
+import time_based_sims as simulations
+# import event_based_sims as simulations
 import lib, policies as policy, derivations
 from termcolor import colored
 
@@ -231,32 +231,33 @@ def run_age_based_tests2():
         test_name_aalto = f"2cMM1Aalto_Load{idx+1}"
         #run_2Class_MG1_tests(test_name_aalto, l1, l2, lib.exp(mu1), lib.exp(mu2), AaltoPolicy)
 
-def run_gittins_tests():
+def run_gittins_tests(gttns_fn=policy.gittins):
     print("*** GITTINS EASY TESTS ***")
     # Fixed identical holding costs test of Gittins and FCFS
     l1, mu1 = 3/8, 3
     c1, C1 = lambda t : 5, lambda t : 5*t
-    l2, mu2, c2, C2 = l1, mu1, c1, C1
+    l2, mu2, c2, C2 = l1, mu1, c1, C1    
     
-    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
-    run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
-    run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
+    # GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, gttns_fn=gttns_fn)
+    # run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
+    # run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
 
-    # One deadline identical classes test of Gittins and FCFS
-    l1, mu1 = 3/8, 3
-    c1, C1 = lambda t : 5 if t > 10 else 0, lambda t : 0 if t < 10 else 5*(t-10)
-    l2, mu2, c2, C2 = l1, mu1, c1, C1
+    # # One deadline identical classes test of Gittins and FCFS
+    # l1, mu1 = 3/8, 3
+    # c1, C1 = lambda t : 5 if t > 10 else 0, lambda t : 0 if t < 10 else 5*(t-10)
+    # l2, mu2, c2, C2 = l1, mu1, c1, C1
     
-    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
-    run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
-    run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
+    # GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, gttns_fn=gttns_fn)
+    # run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
+    # run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
 
     # One deadline test of Gittins and Whittle
     l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
     c1, C1 = lambda t : 5 if t > 10 else 0, lambda t : 0 if t < 10 else 5*(t-10)
     c2, C2 = lambda t : 1 if t > 5 else 0, lambda t : 0 if t < 5 else t-5
 
-    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, initialV=policy.cmuV)
+    cmu = policy.generalized_cmu([mu1, mu2], [c1, c2])
+    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 25, alpha=0.1, initialPolicy=cmu, gttns_fn=gttns_fn)
     policy.MG1_ECost_tests("Gittins", [l1, l2], [mu1, mu2], [C1, C2], GittinsIdx)
     WhittleIdx = policy.Whittle([l1, l2], [mu1, mu2], [c1, c2])
     policy.MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
@@ -264,7 +265,7 @@ def run_gittins_tests():
 def run_gittins_tests2():
     print("*** GITTINS HARD TEST ***")    
     # Gittins vs. Whittle on weird functions
-    l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
+    l1, l2, mu1, mu2 = 1.8, 0.2, 3, 3
     # dead1 = lambda t : 5 if t > 8 else 0, lambda t : 0 if t < 10 else 5*(t-8)
     # dead2 = lambda t : 5 if t > 10 else (1 if t > 5 else 0), lambda t : 5*(t-10)+5 if t > 10 else (t-5 if t > 5 else 0)
     # dead3 = lambda t : 3 if t > 7 else (2 if t > 3 else 0), lambda t : 3*(t-7)+8 if t > 7 else (2*(t-3) if t > 3 else 0)
@@ -273,13 +274,26 @@ def run_gittins_tests2():
     # osc = lambda t : math.exp(t) + math.sin(t), lambda t : math.exp(t) - math.cos(t)
     def mono(x): return lambda t : (x+1)*(t**x), lambda t : t**(x+1)
 
-    c1, C1 = mono(2) # 10
-    c2, C2 = mono(3) # 12
+    c1, C1 = mono(10)
+    c2, C2 = mono(10)
 
     GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
     policy.MG1_ECost_tests("Gittins", [l1, l2], [mu1, mu2], [C1, C2], GittinsIdx)
     WhittleIdx = policy.Whittle([l1, l2], [mu1, mu2], [c1, c2])
     policy.MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
+
+def run_age_comp_test(l1, l2, mu1, mu2, a_vals, b_vals, c_vals):
+    linearPolicy = policy.LinearAccPrio(b_vals, a_vals)
+    run_2Class_MG1_tests("Linear Policy", l1, l2, lib.exp(mu1), lib.exp(mu2), linearPolicy)
+    V = lambda r, s, t, k: a_vals[k-1]*t+b_vals[k-1]
+    ageLinearPolicy = policy.AgeBasedPrio(V, num_classes=len(a_vals))
+    run_2Class_MG1_tests("Age Linear Policy", l1, l2, lib.exp(mu1), lib.exp(mu2), ageLinearPolicy)
+    
+    quadPolicy = policy.QuadraticAccPrio(a_vals, b_vals, c_vals)
+    run_2Class_MG1_tests("Quad Policy", l1, l2, lib.exp(mu1), lib.exp(mu2), quadPolicy)
+    V = lambda r, s, t, k: a_vals[k-1]*t*t+b_vals[k-1]*t+c_vals[k-1]
+    ageQuadPolicy = policy.AgeBasedPrio(V, num_classes=len(a_vals))
+    run_2Class_MG1_tests("Age Quad Policy", l1, l2, lib.exp(mu1), lib.exp(mu2), ageQuadPolicy)
 
 if __name__ == "__main__":
     l, mu = .4, 2
@@ -289,5 +303,7 @@ if __name__ == "__main__":
     # run_linear_tests(l1, l2, mu1, mu2)
     # run_quadratic_tests(l1, l2, mu1, mu2)
     # run_age_based_tests(l1, l2, mu1, mu2)
-    run_age_based_tests2()
+    # run_age_based_tests2()
+    run_gittins_tests(policy.inst_gittins)
     # run_gittins_tests2()
+    # run_age_comp_test(l1, l2, mu1, mu2, [1, 2], [0, 0], [0, 0])

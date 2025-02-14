@@ -1,7 +1,6 @@
 import math, random, numpy as np
 import matplotlib.pyplot as plt
-import lib, simulations, policies as policy
-import policies.gittins as gttns
+import lib, time_based_sims as simulations, policies as policy
 import json, os, logging
 
 # CONSTANTS
@@ -195,7 +194,7 @@ def run_gittins_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2,
 
     gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values)
     whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
-    gittins = lambda l1, l2: gttns.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
+    gittins = lambda l1, l2: policy.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
                                                      maxItr=maxItr, alpha=alpha, age_values=age_values)
     policies = {'FCFS': [policy.FCFS], # "AccPrio*":accprios,
                 'PPrio':[policy.PPrio12, policy.PPrio21], #'Lookahead*' : lookaheads,
@@ -212,11 +211,12 @@ def run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.
     exp_name = 'normalized_exp'
 
     whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
-    gittins = lambda l1, l2: gttns.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
+    gittins = lambda l1, l2: policy.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
                                                      maxItr=maxItr, alpha=alpha, age_values=age_values)
     policies = {'FCFS': [policy.FCFS],
                 'Whittle': [whittle],
-                'Gittins': [gittins]}
+                'Gittins': [gittins]
+                }
     
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
@@ -251,7 +251,24 @@ if __name__ == "__main__":
     c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
     c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
     age_values = np.linspace(0, max(d1, d2)*1.1, 20)
+
     # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2, age_values=age_values, p1=0.25)
     run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=100, alpha=0.07, age_values=age_values, p1=0.25)
     gen_plot('normalized_exp', None, p1=0.25)
     plt.show()
+
+    # # Plotting r*
+    # l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
+    # c1, C1 = lambda t : 3 if t > 10 else 0, lambda t : 0 if t < 10 else 3*(t-10)
+    # c2, C2 = lambda t : 1 if t > 5 else 0, lambda t : 0 if t < 5 else 1*(t-5)
+    # policy.plotGittinsV('gittinsR.png', [l1, l2], [mu1, mu2], [c1, c2], [C1, C2], maxItr=10, initialPolicy=None)
+
+    # #Nomalized plot w/ high degree monomial
+    # mu1, mu2, c1, c2= 2, 2, 3, 3
+    # def mono(x): return lambda t : (x+1)*(t**x), lambda t : t**(x+1)
+    # c1_fn, C1_fn = mono(10)
+    # c2_fn, C2_fn = mono(10)
+
+    # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=100, alpha=0.07, p1=0.25)
+    # gen_plot('normalized_exp', None, p1=0.25)
+    # plt.show()
