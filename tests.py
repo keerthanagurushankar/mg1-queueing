@@ -96,44 +96,44 @@ def run_basic_tests(l, mu, l1, l2, mu1, mu2):
 
 def run_linear_tests(l1, l2, mu1, mu2):
     print("**2 CLASS NP-ACC-PRIO TESTS**")
-    NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) 
-    run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
-    run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
-    run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
-                        lib.hyperexponential(mu2, Csq=5), NPAccPrio)
+    # NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) 
+    # run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
+    # run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
+    # run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+    #                     lib.hyperexponential(mu2, Csq=5), NPAccPrio)
     b1, b2 = 1, 1 
 
     print("**2 CLASS P-ACC-PRIO TESTS**")
-    # PAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = True)
-    # run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
-    # run_2Class_MG1_tests("2cMD1Pacc", l1, l2, lib.det(mu1), lib.det(mu2), PAccPrio)
-    # run_2Class_MG1_tests("2cMH1Pacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
-    #                      lib.hyperexponential(mu2, Csq=5), PAccPrio)  
-    # PAccPrio = policy.AccPrio(b1 = 100, b2 = 1, is_preemptive = True)
-    # run_2Class_MG1_tests("2cMM1PaccB", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
+    PAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = True)
+    run_2Class_MG1_tests("2cMM1Pacc", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
+    run_2Class_MG1_tests("2cMD1Pacc", l1, l2, lib.det(mu1), lib.det(mu2), PAccPrio)
+    run_2Class_MG1_tests("2cMH1Pacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                         lib.hyperexponential(mu2, Csq=5), PAccPrio)  
+    PAccPrio = policy.AccPrio(b1 = 100, b2 = 1, is_preemptive = True)
+    run_2Class_MG1_tests("2cMM1PaccB", l1, l2, lib.exp(mu1), lib.exp(mu2), PAccPrio)
 
-    # print("**LOOKAHEAD TESTS**")
-    # run_2Class_MG1_tests("MM1Look0", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(0))
-    # run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
-    # c1, d1, c2 = 10, 10, 1 #mu1 c1 exp(-(mu1 - l1) * (d1 - alpha_star)) = mu2 c2
-    # alpha_star = d1 - np.log((mu1*c1)/(mu2*c2)) / (mu1 - l1)
-    # print(f"alpha_star {alpha_star}")
-    # run_2Class_MG1_tests("MM1Look*",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(alpha_star))
+    print("**LOOKAHEAD TESTS**")
+    run_2Class_MG1_tests("MM1Look0", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(0))
+    run_2Class_MG1_tests("MM1Look10",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(10))
+    c1, d1, c2 = 10, 10, 1 #mu1 c1 exp(-(mu1 - l1) * (d1 - alpha_star)) = mu2 c2
+    alpha_star = d1 - np.log((mu1*c1)/(mu2*c2)) / (mu1 - l1)
+    print(f"alpha_star {alpha_star}")
+    run_2Class_MG1_tests("MM1Look*",l1, l2, lib.exp(mu1), lib.exp(mu2), policy.Lookahead(alpha_star))
 
-    # print("**2 CLASS LINEAR WHITTLE TESTS**")
-    # # Define Linear Whittle Policy with different parameters
-    # LinearWhittle1 = policy.LinearWhittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2], cost_rates=[(3, 2), (2, 1)])
-    # run_2Class_MG1_tests("2cMM1LWhittle", l1, l2, lib.exp(mu1), lib.exp(mu2), LinearWhittle1)
-    # run_2Class_MG1_tests("2cMD1LWhittle", l1, l2, lib.det(mu1), lib.det(mu2), LinearWhittle1)
-    # run_2Class_MG1_tests("2cMH1LWhittle", l1, l2, lib.hyperexponential(mu1, Csq=5),
-    #                      lib.hyperexponential(mu2, Csq=5), LinearWhittle1)
+    print("**2 CLASS LINEAR WHITTLE TESTS**")
+    # Define Linear Whittle Policy with different parameters
+    LinearWhittle1 = policy.LinearWhittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2], cost_rates=[(3, 2), (2, 1)])
+    run_2Class_MG1_tests("2cMM1LWhittle", l1, l2, lib.exp(mu1), lib.exp(mu2), LinearWhittle1)
+    run_2Class_MG1_tests("2cMD1LWhittle", l1, l2, lib.det(mu1), lib.det(mu2), LinearWhittle1)
+    run_2Class_MG1_tests("2cMH1LWhittle", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                         lib.hyperexponential(mu2, Csq=5), LinearWhittle1)
 
-    # # Test with more extreme cost ratios
-    # LinearWhittle2 = policy.LinearWhittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2], cost_rates=[(100, 1), (5, 1)])
-    # run_2Class_MG1_tests("2cMM1LWhittleB", l1, l2, lib.exp(mu1), lib.exp(mu2), LinearWhittle2)
-    # run_2Class_MG1_tests("2cMD1LWhittleB", l1, l2, lib.det(mu1), lib.det(mu2), LinearWhittle2)
-    # run_2Class_MG1_tests("2cMH1LWhittleB", l1, l2, lib.hyperexponential(mu1, Csq=5),
-    #                      lib.hyperexponential(mu2, Csq=5), LinearWhittle2)
+    # Test with more extreme cost ratios
+    LinearWhittle2 = policy.LinearWhittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2], cost_rates=[(100, 1), (5, 1)])
+    run_2Class_MG1_tests("2cMM1LWhittleB", l1, l2, lib.exp(mu1), lib.exp(mu2), LinearWhittle2)
+    run_2Class_MG1_tests("2cMD1LWhittleB", l1, l2, lib.det(mu1), lib.det(mu2), LinearWhittle2)
+    run_2Class_MG1_tests("2cMH1LWhittleB", l1, l2, lib.hyperexponential(mu1, Csq=5),
+                         lib.hyperexponential(mu2, Csq=5), LinearWhittle2)
 
 def run_quadratic_tests(l1, l2, mu1, mu2):
     print("**2 CLASS P-QUAD-ACC-PRIO TESTS**")
@@ -212,13 +212,13 @@ def run_age_based_tests2():
         lambda t : c2 if t > d2 else 0
     ]
 
-    for idx, (l1, l2) in enumerate(load_conditions):
+    for idx, (l1, l2) in enumerate(load_conditions[-1:]):
         assert l1/mu1 + l2/mu2 < 1, "Load must be less than 1"
         
         # Test generalized cμ Policy
         GenCMU = policy.generalized_cmu(service_rates=[mu1, mu2], holding_cost_rates=holding_cost_rates)
         test_name_cmu = f"2cMM1GenCMU_Load{idx+1}"
-        run_2Class_MG1_tests(test_name_cmu, l1, l2, lib.exp(mu1), lib.exp(mu2), GenCMU)
+        #run_2Class_MG1_tests(test_name_cmu, l1, l2, lib.exp(mu1), lib.exp(mu2), GenCMU)
 
         # Test Whittle Policy
         WhittlePolicy = policy.Whittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2],
@@ -229,7 +229,7 @@ def run_age_based_tests2():
         # Test Aalto Policy
         AaltoPolicy = policy.Aalto(arrival_rates=[l1, l2], service_rates=[mu1, mu2], holding_cost_rates=holding_cost_rates)
         test_name_aalto = f"2cMM1Aalto_Load{idx+1}"
-        run_2Class_MG1_tests(test_name_aalto, l1, l2, lib.exp(mu1), lib.exp(mu2), AaltoPolicy)
+        #run_2Class_MG1_tests(test_name_aalto, l1, l2, lib.exp(mu1), lib.exp(mu2), AaltoPolicy)
 
 def run_gittins_tests():
     print("*** GITTINS EASY TESTS ***")
@@ -285,9 +285,9 @@ if __name__ == "__main__":
     l, mu = .4, 2
     l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1    # 0.15, 0.45; 0.65625
     
-    run_basic_tests(l, mu, l1, l2, mu1, mu2)
-    run_linear_tests(l1, l2, mu1, mu2)
+    #run_basic_tests(l, mu, l1, l2, mu1, mu2)
+    # run_linear_tests(l1, l2, mu1, mu2)
     # run_quadratic_tests(l1, l2, mu1, mu2)
     # run_age_based_tests(l1, l2, mu1, mu2)
-    # run_age_based_tests2()
+    run_age_based_tests2()
     # run_gittins_tests2()

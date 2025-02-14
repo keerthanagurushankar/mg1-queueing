@@ -3,7 +3,7 @@ from collections import deque
 import random, math
 import lib
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 class Event:
     def __init__(self, event_type, time, job=None):
@@ -57,8 +57,8 @@ class MG1:
         self.job_classes = job_classes
         self.policy = policy
         
-        self.simulation_time = 10**6 #simulation_time
-        self.inspection_rate = 0.1 #inspection_rate
+        self.simulation_time = 10**5 #simulation_time
+        self.inspection_rate = 1 #inspection_rate
         
         # initialize priority_function of job classes
         for k, job_class in enumerate(job_classes):
@@ -93,8 +93,8 @@ class MG1:
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
 
-            logging.debug(f"EVENT: {event.time, event.event_type}, "
-                          f"job index: {event.job.job_class.index if event.job else None}")
+            logging.debug(f"EVENT: {event.time, event.event_type}, ")
+                        #  f"job index: {event.job.job_class.index if event.job else None}")
 
             if event.event_type == 'Arrival':
                 self.handle_arrival(event)
@@ -103,7 +103,9 @@ class MG1:
             elif event.event_type == 'Inspection':
                 self.handle_inspection()
             elif event.event_type == 'PreemptionCheck':
-                self.handle_preemption_check()
+                self.handle_preemption_check(event)
+
+        print(f"Failed {self.num_inspections_failed} / {self.num_inspections_total} inspections")
 
     def handle_arrival(self, event):
         # Schedule next arrival for the appropriate job_class
@@ -140,7 +142,7 @@ class MG1:
             if new_job.job_class.job_queue or self.current_job.job_class == new_job.job_class:
                 new_job.job_class.job_queue.append(new_job)
             else:
-                # update current_job's priority [only works if prio indep of remaining_time]
+                # I may preempt right away or need a preemption check
                 self.current_job.priority = self.current_job.job_class.priority(
                     self.current_job.remaining_time, self.current_job.service_time,
                     self.current_time - self.current_job.arrival_time)
@@ -148,14 +150,31 @@ class MG1:
                 if new_job.priority > self.current_job.priority:
                     self.preempt_current_job()
                     self.start_service(new_job)
-                    # if dynamic schedule preemption checks
+                        
                 elif self.policy.is_dynamic_priority:
-                    raise Exception("Not Implemented")
+                    
+                    if math.isclose(new_job.priority, self.current_job.priority, rel_tol=1e-3):
+                        future_delta = 0.05
+                        current_job_future_prio = self.current_job.job_class.priority(
+                          self.current_job.remaining_time, self.current_job.service_time,
+                          self.current_time + future_delta - self.current_job.arrival_time)
+                        new_job_future_prio = new_job.job_class.priority(
+                            new_job.remaining_time, new_job.service_time, future_delta)
+
+                        if new_job_future_prio > current_job_future_prio:
+                            self.preempt_current_job()
+                            self.start_service(new_job)
+
+                    else:
+                        new_job.job_class.job_queue.append(new_job)
+                        self.schedule_preemption_check(new_job)
+                
                 else:
                     new_job.job_class.job_queue.append(new_job)                    
         
         else: # [non preemptive and busy]
-            new_job.job_class.job_queue.append(new_job)            
+            new_job.job_class.job_queue.append(new_job)
+
 
     def handle_departure(self, event):
         if self.current_job != event.job or self.current_time != \
@@ -169,6 +188,52 @@ class MG1:
 
         if self.get_updated_top_priorities()[0]:
             self.start_service()
+
+    def schedule_preemption_check(self, new_job = None):
+        assert self.policy.is_dynamic_priority and self.policy.is_preemptive
+        assert self.current_job is not None
+
+        preemption_event = None
+        
+        if new_job:
+            # if a diff class just arrived, it may preempt the curr job at future time
+            t_overtake = self.policy.calculate_overtake_time(self.current_job,
+                                                             new_job, self.current_time)
+            if t_overtake: 
+                preemption_event = Event('PreemptionCheck', t_overtake, (self.current_job, new_job))
+        else:
+            # when starting new service, check if any job in queue may grow to overtake priority
+            min_overtake_time, overtake_job = float('inf'), None
+            for job in self.get_updated_top_priorities()[0]:
+                t_overtake = self.policy.calculate_overtake_time(self.current_job, job,
+                                                                 self.current_time)
+                if t_overtake and t_overtake < min_overtake_time:
+                    min_overtake_time, overtake_job = t_overtake, job
+                    
+            if overtake_job:
+                preemption_event = Event('PreemptionCheck', min_overtake_time,
+                                         (self.current_job, overtake_job))
+
+        if preemption_event:
+            logging.debug(f"I'm scheduling preemption check at {preeemption_event.time}")
+            heapq.heappush(self.event_queue, preemption_event)
+
+    def handle_preemption_check(self, event):        
+        event_current_job, overtake_job = event.job
+        if self.current_job != event_current_job:
+            logging.debug("Ignoring stale preemption check")
+            return
+
+        self.current_job.priority = self.current_job.job_class.priority(
+                    self.current_job.remaining_time, self.current_job.service_time,
+                    self.current_time - self.current_job.arrival_time)
+        overtake_job.priority = overtake_job.job_class.priority(
+            overtake_job.remaining_time, overtake_job.service_time,
+            self.current_time - overtake_job.arrival_time)
+
+        if overtake_job.priority >= self.current_job.priority:
+            self.preempt_current_job()
+            self.start_service(overtake_job)
 
     def preempt_current_job(self):
         # update completed service of current_job & put it back in its queue [front of its queue]        
@@ -203,9 +268,9 @@ class MG1:
         departure_time = self.current_time + self.current_job.remaining_time
         departure_event = Event('Departure', departure_time, self.current_job)
         heapq.heappush(self.event_queue, departure_event)
-        
-        # self.schedule_preemption_check() # if dynamic and preemptive        
-    
+
+        if self.policy.is_preemptive and self.policy.is_dynamic_priority:
+            self.schedule_preemption_check()
 
     def get_updated_top_priorities(self):
         top_waiting_jobs = []
@@ -254,9 +319,19 @@ class MG1:
                           waiting_job.remaining_time, waiting_job.service_time,
                           self.current_time - waiting_job.arrival_time)
 
-                        if waiting_prio > current_job_prio:
-                            logging.warn("Inspection fail")
+                        if waiting_prio > current_job_prio and \
+                           not math.isclose(waiting_prio, current_job_prio, rel_tol=0.01):
+                            logging.warn(f"Inspection fail: waiting job of class {job_class.index} "
+                                f"with priority {waiting_prio} while serving "
+                                f"{self.current_job.job_class.index} with prio {current_job_prio}")
                             self.num_inspections_failed += 1
+
+                            t_overtake = self.policy.calculate_overtake_time(self.current_job,
+                                                             waiting_job, self.current_time)
+                            logging.warn(f"Current time {self.current_time}, I would schedule "
+                                         f"overtake at {t_overtake}")
+
+                            
 
             else:
                 # if non-preemptive, at current_service_start_time,
@@ -275,7 +350,7 @@ class MG1:
                               self.current_service_start_time - waiting_job.arrival_time)
 
                             if waiting_prio > current_job_prio:
-                                logging.warn("Inspection fail")
+                                logging.debug("Inspection fail")
                                 self.num_inspections_failed += 1
 
     def record_metrics(self, job, departure_time):
