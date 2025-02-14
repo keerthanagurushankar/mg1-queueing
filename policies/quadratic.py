@@ -1,6 +1,7 @@
 from .base import Policy
 import numpy as np
 import logging
+import matplotlib.pyplot as plt
 
 def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
     # Vi(t) = a_i * t^2 + b_i * t + c_i
@@ -42,6 +43,8 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
             else:
                 return None  # No valid overtake time if B = 0 and A = 0.
 
+
+
         # Quadratic solutions: t = (-B ± sqrt(D)) / (2A)
         root1 = (-B + np.sqrt(D)) / (2 * A)
         root2 = (-B - np.sqrt(D)) / (2 * A)
@@ -53,6 +56,16 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
 
         overtake_time = min(valid_roots) + 0.001
         logging.debug(f"Overtake occurs at {overtake_time}")
+
+        # debug
+        overtake_cond = lambda t : A * t**2 + B * t + C
+        # if i2 == 1 and i1 == 0:
+        #     age_values = np.arange(0, 50, 0.5)
+        #     plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
+        #     plt.plot(age_values, np.zeros(len(age_values)))
+        #     plt.axvline(x=overtake_time)
+            # plt.show()
+        
         return overtake_time
 
     return Policy(policy_name, priority_fn=V, is_preemptive=is_preemptive,

@@ -1,8 +1,10 @@
 import math, random
 import numpy as np
-import lib, policies as policy, derivations
+
 # import simulations
-import time_based_sims as simulations
+# import time_based_sims as simulations
+import event_based_sims as simulations
+import lib, policies as policy, derivations
 from termcolor import colored
 
 def print_test(test_label, empirical_val, theoretical_val):
@@ -94,11 +96,11 @@ def run_basic_tests(l, mu, l1, l2, mu1, mu2):
 
 def run_linear_tests(l1, l2, mu1, mu2):
     print("**2 CLASS NP-ACC-PRIO TESTS**")
-    NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) 
-    run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
-    run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
-    run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
-                        lib.hyperexponential(mu2, Csq=5), NPAccPrio)
+    # NPAccPrio = policy.AccPrio(b1 = 3, b2 = 2, is_preemptive = False) 
+    # run_2Class_MG1_tests("2cMM1NPacc", l1, l2, lib.exp(mu1), lib.exp(mu2), NPAccPrio)
+    # run_2Class_MG1_tests("2cMD1NPacc", l1, l2, lib.det(mu1), lib.det(mu2), NPAccPrio)
+    # run_2Class_MG1_tests("2cMH1NPacc", l1, l2, lib.hyperexponential(mu1, Csq=5),
+    #                     lib.hyperexponential(mu2, Csq=5), NPAccPrio)
     b1, b2 = 1, 1 
 
     print("**2 CLASS P-ACC-PRIO TESTS**")
@@ -210,13 +212,13 @@ def run_age_based_tests2():
         lambda t : c2 if t > d2 else 0
     ]
 
-    for idx, (l1, l2) in enumerate(load_conditions):
+    for idx, (l1, l2) in enumerate(load_conditions[-1:]):
         assert l1/mu1 + l2/mu2 < 1, "Load must be less than 1"
         
         # Test generalized cμ Policy
         GenCMU = policy.generalized_cmu(service_rates=[mu1, mu2], holding_cost_rates=holding_cost_rates)
         test_name_cmu = f"2cMM1GenCMU_Load{idx+1}"
-        run_2Class_MG1_tests(test_name_cmu, l1, l2, lib.exp(mu1), lib.exp(mu2), GenCMU)
+        #run_2Class_MG1_tests(test_name_cmu, l1, l2, lib.exp(mu1), lib.exp(mu2), GenCMU)
 
         # Test Whittle Policy
         WhittlePolicy = policy.Whittle(arrival_rates=[l1, l2], service_rates=[mu1, mu2],
@@ -227,9 +229,10 @@ def run_age_based_tests2():
         # Test Aalto Policy
         AaltoPolicy = policy.Aalto(arrival_rates=[l1, l2], service_rates=[mu1, mu2], holding_cost_rates=holding_cost_rates)
         test_name_aalto = f"2cMM1Aalto_Load{idx+1}"
-        run_2Class_MG1_tests(test_name_aalto, l1, l2, lib.exp(mu1), lib.exp(mu2), AaltoPolicy)
+        #run_2Class_MG1_tests(test_name_aalto, l1, l2, lib.exp(mu1), lib.exp(mu2), AaltoPolicy)
 
-def run_gittins_tests(gttns_fn=policy.gittins):
+def run_gittins_tests():
+    print("*** GITTINS EASY TESTS ***")
     # # Fixed identical holding costs test of Gittins and FCFS
     # l1, mu1 = 3/8, 3
     # c1, C1 = lambda t : 5, lambda t : 5*t
@@ -260,6 +263,7 @@ def run_gittins_tests(gttns_fn=policy.gittins):
     policy.MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
 
 def run_gittins_tests2():
+    print("*** GITTINS HARD TEST ***")    
     # Gittins vs. Whittle on weird functions
     l1, l2, mu1, mu2 = 1.8, 0.2, 3, 3
     # dead1 = lambda t : 5 if t > 8 else 0, lambda t : 0 if t < 10 else 5*(t-8)

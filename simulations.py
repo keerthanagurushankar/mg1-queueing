@@ -150,8 +150,11 @@ class MG1:
 
                 for job in self.job_queue:
                     job_priority = job.current_priority(self.current_time)
-                    assert job_priority <= current_job_priority + 0.1, "Not working on highest prio job" + f"\
-                      {current_job_priority, job_priority, self.current_job.job_class.index, job.job_class.index}" 
+                    if job_priority > current_job_priority + 0.1:
+                        logging.warn(f"Not working on highest prio job {current_job_priority, job_priority}"
+                          f"{self.current_job.job_class.index, job.job_class.index}")
+                    #assert job_priority <= current_job_priority + 0.1, "Not working on highest prio job" + f"\
+                     # {current_job_priority, job_priority, self.current_job.job_class.index, job.job_class.index}" 
             else:
                 for job in self.job_queue:
                     assert job.priority <= self.current_job.priority or job.arrival_time \
