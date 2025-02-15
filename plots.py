@@ -187,10 +187,10 @@ def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.25):
                             p1, policy_fam) for name, policy_fam in policies.items()}
     gen_plot(exp_name, costs_by_policy, p1)    
 
-def run_gittins_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2,
+def run_gittins_exp(name, mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2,
                     age_values=np.arange(0, 15, 0.1), p1=0.25):
     # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2 * is(t>d2)
-    exp_name = 'gittins_exp'
+    exp_name = f'gittins_exp_{name}'
 
     gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values)
     whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
@@ -198,7 +198,8 @@ def run_gittins_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2,
                                                      maxItr=maxItr, alpha=alpha, age_values=age_values)
     policies = {'FCFS': [policy.FCFS], # "AccPrio*":accprios,
                 'PPrio':[policy.PPrio12, policy.PPrio21], #'Lookahead*' : lookaheads,
-                r'gen-$c\mu$': [gen_cmu], 'Whittle': [whittle],
+                r'gen-$c\mu$': [gen_cmu],
+                'Whittle': [whittle],
                 'Gittins': [gittins]}
     
     costs_by_policy = {name: compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
@@ -242,20 +243,20 @@ if __name__ == "__main__":
     # c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
     # c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
     # age_values = np.linspace(0, max(d1, d2)*1.1, 20)
-    # run_gittins_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2, age_values=age_values, p1=0.5)
+    # run_gittins_exp("2dead", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2, age_values=age_values, p1=0.5)
     # gen_plot('gittins_exp', None, p1=0.5)
     # plt.show()
 
-    # Same experiment including Gittins
-    mu1, mu2, c1, c2, d1, d2 = 2, 2, 3, 3, 7, 7
-    c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
-    c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
-    age_values = np.linspace(0, max(d1, d2)*1.1, 20)
+    # # Same experiment including Gittins
+    # mu1, mu2, c1, c2, d1, d2 = 2, 2, 3, 3, 7, 7
+    # c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
+    # c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
+    # age_values = np.linspace(0, max(d1, d2)*1.1, 20)
 
-    # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2, age_values=age_values, p1=0.25)
-    run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=100, alpha=0.07, age_values=age_values, p1=0.25)
-    gen_plot('normalized_exp', None, p1=0.25)
-    plt.show()
+    # # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2, age_values=age_values, p1=0.25)
+    # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=100, alpha=0.07, age_values=age_values, p1=0.25)
+    # gen_plot('normalized_exp', None, p1=0.25)
+    # plt.show()
 
     # # Plotting r*
     # l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
@@ -272,3 +273,29 @@ if __name__ == "__main__":
     # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=100, alpha=0.07, p1=0.25)
     # gen_plot('normalized_exp', None, p1=0.25)
     # plt.show()
+
+    # # Whittle paper plots
+    # mu1, mu2 = 3, 1
+    # c1, c2, d1, d2 = 10, 1, 2, 0
+    # c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
+    # c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
+    # age_values = np.linspace(0, max(d1, d2)*1.1, 20)
+    # run_gittins_exp("wp1", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.1, age_values=age_values, p1=0.9)
+    # gen_plot('gittins_exp_wp1', None, p1=0.9)
+    # plt.show()
+
+    # mu1, mu2 = 3, 1
+    # c1, c2, d1, d2 = 10, 1, 10, 5
+    # c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
+    # c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
+    # age_values = np.linspace(0, max(d1, d2)*1.1, 20)
+    # run_gittins_exp("wp2", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.1, age_values=age_values, p1=0.5)
+    # gen_plot('gittins_exp_wp2', None, p1=0.5)
+    # plt.show()
+
+    mu1, mu2 = 3, 1
+    c1_fn, C1_fn = lambda t : t**2, lambda t : (t**3)/3
+    c2_fn, C2_fn = lambda t : t+30, lambda t : (t**2)/2+30*t
+    run_gittins_exp("wp3", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.1, p1=0.75)
+    gen_plot('gittins_exp_wp3', None, p1=0.75)
+    plt.show()
