@@ -205,10 +205,10 @@ def run_age_based_tests2():
         lambda t: 0.5*t**2 + t + 2  # Quadratic cost for class 2
     ]
 
-    # holding_cost_rates = [
-    #     lambda t : c1 if t > d1 else 0,
-    #     lambda t : c2 if t > d2 else 0
-    # ]
+    holding_cost_rates = [
+        lambda t : c1 if t > d1 else 0,
+        lambda t : c2 if t > d2 else 0
+    ]
 
     for idx, (l1, l2) in enumerate(load_conditions):
         assert l1/mu1 + l2/mu2 < 1, "Load must be less than 1"
