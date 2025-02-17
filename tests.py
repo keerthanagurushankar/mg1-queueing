@@ -1,9 +1,9 @@
 import math, random
 import numpy as np
 
-#import simulations
-# import time_based_sims as simulations
-import event_based_sims as simulations
+#import simulations.event_based as simulations
+# import simulations.time_based as simulations
+import simulations.event_based_FCFS as simulations
 import lib, policies as policy, derivations
 from termcolor import colored
 
