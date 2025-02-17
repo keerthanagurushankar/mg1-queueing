@@ -43,8 +43,6 @@ def QuadraticAccPrio(a_values, b_values, c_values, is_preemptive=True):
             else:
                 return None  # No valid overtake time if B = 0 and A = 0.
 
-
-
         # Quadratic solutions: t = (-B ± sqrt(D)) / (2A)
         root1 = (-B + np.sqrt(D)) / (2 * A)
         root2 = (-B - np.sqrt(D)) / (2 * A)

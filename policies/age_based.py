@@ -23,6 +23,7 @@ def AgeBasedPrio(V, age_values=np.arange(10, 20, 0.1), num_classes=2):
         max_time = t2 + age_values[-1]
         
         logging.debug(f"Checking for overtake of {class2+1, t2} over {class1+1, t1}")
+
         # debug
         if class2 == 1 and class1 == 0:
             #plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
@@ -33,6 +34,7 @@ def AgeBasedPrio(V, age_values=np.arange(10, 20, 0.1), num_classes=2):
 
         #assert overtake_cond(current_time) <= 0, "Must be lower prio now"
         #print(overtake_cond(current_time))
+
         
         if overtake_cond(current_time) < 0 and overtake_cond(max_time) > 0:
             overtake_time = opt.brentq(overtake_cond, current_time, max_time)
