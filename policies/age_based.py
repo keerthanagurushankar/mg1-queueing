@@ -8,7 +8,6 @@ import logging
 def AgeBasedPrio(V, age_values=np.arange(10, 20, 0.1), num_classes=2):
     # list of floats, list of floats, list of fns, np.array
     V_values = [[V(0, 0, t, k) for t in age_values] for k in range(1, num_classes+1)]
-    #V_values = [[Vi(0, 0, t) for t in age_values] for Vi in prio_fns]
 
     # if job2 has currently lower prio, but may be higher later, compute when.    
     def calculate_overtake_time(job1, job2, current_time):
@@ -24,13 +23,25 @@ def AgeBasedPrio(V, age_values=np.arange(10, 20, 0.1), num_classes=2):
         max_time = t2 + age_values[-1]
         
         logging.debug(f"Checking for overtake of {class2+1, t2} over {class1+1, t1}")
+
+        # debug
+        if class2 == 1 and class1 == 0:
+            #plt.plot(age_values, [overtake_cond(t+t2) for t in age_values])
+            #plt.plot(age_values, np.zeros(len(age_values)))
+            # plt.axvline(x=overtake_time)
+            #plt.show()
+            pass
+
+        #assert overtake_cond(current_time) <= 0, "Must be lower prio now"
+        #print(overtake_cond(current_time))
+
         
         if overtake_cond(current_time) < 0 and overtake_cond(max_time) > 0:
             overtake_time = opt.brentq(overtake_cond, current_time, max_time)
             return overtake_time + 0.005 if overtake_time > current_time else None
 
         if overtake_cond(current_time) < 0 and overtake_cond(max_time) < 0:
-            for t in np.linspace(current_time, max_time, 5)[1:-1]:
+            for t in np.linspace(current_time, max_time, 7)[1:-1]:
                 if overtake_cond(t) > 0:
                     overtake_time = opt.brentq(overtake_cond, current_time, t)
                     return overtake_time + 0.005 if overtake_time > current_time else None

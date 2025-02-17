@@ -15,7 +15,7 @@ def LinearAccPrio(a_values, b_values, is_preemptive=True):
             return None
         overtake_time = (a1 - a2 + b2 * t2 - b1 * t1) / (b2 - b1)
         logging.debug(f"Checking for overtake of {i2+1, t2} over {i1+1, t1} at {overtake_time}")
-        return overtake_time + 0.001 if overtake_time >= current_time else None  
+        return overtake_time + 1e-4 if overtake_time >= current_time else None  
 
     return Policy(policy_name, priority_fn=V, is_preemptive=is_preemptive,
                   is_dynamic_priority=True, calculate_overtake_time=calculate_overtake_time)
