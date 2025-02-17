@@ -1,8 +1,9 @@
 import numpy as np
 from .age_based import AgeBasedPrio, Whittle
 import lib
-import time_based_sims as simulations
-# import simulations
+#import time_based_sims as simulations
+#import simulations
+import event_based_sims as simulations
 import logging
 import matplotlib.pyplot as plt
 

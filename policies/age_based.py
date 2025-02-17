@@ -30,6 +30,9 @@ def AgeBasedPrio(V, age_values=np.arange(10, 20, 0.1), num_classes=2):
             # plt.axvline(x=overtake_time)
             #plt.show()
             pass
+
+        #assert overtake_cond(current_time) <= 0, "Must be lower prio now"
+        #print(overtake_cond(current_time))
         
         if overtake_cond(current_time) < 0 and overtake_cond(max_time) > 0:
             overtake_time = opt.brentq(overtake_cond, current_time, max_time)

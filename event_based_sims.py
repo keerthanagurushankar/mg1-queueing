@@ -28,6 +28,7 @@ class JobClass:
                 self.sequence_index = -1
 
         self.job_queue = deque([])
+        logging.debug(f"I initialized job_queue of {index} as {self.job_queue}")
 
     def generate_next_job(self, current_time):
         if self.arrival_sequence and self.sequence_index < len(self.arrival_sequence)-1:
@@ -81,8 +82,10 @@ class MG1:
         for job_class in self.job_classes:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
+            job_class.job_queue = deque([]) # Needed if same job class defs are reused       
+            logging.debug(f"Inititalizing job queue {job_class.index, len(job_class.job_queue)}")
 
-        heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))    
+        heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
 
     def run(self):
         self.initialize()
@@ -139,6 +142,7 @@ class MG1:
             self.start_service(new_job)
             
         elif self.policy.is_preemptive:
+            logging.debug("System was busy, I may preempt right away or need future check")
             if new_job.job_class.job_queue or self.current_job.job_class == new_job.job_class:
                 new_job.job_class.job_queue.append(new_job)
             else:
@@ -153,8 +157,9 @@ class MG1:
                         
                 elif self.policy.is_dynamic_priority:
                     
-                    if math.isclose(new_job.priority, self.current_job.priority, rel_tol=1e-3):
-                        future_delta = 0.05
+                    if False: #math.isclose(new_job.priority, self.current_job.priority, rel_tol=1e-3):
+                        
+                        future_delta = 1e-3
                         current_job_future_prio = self.current_job.job_class.priority(
                           self.current_job.remaining_time, self.current_job.service_time,
                           self.current_time + future_delta - self.current_job.arrival_time)
@@ -321,14 +326,14 @@ class MG1:
 
                         if waiting_prio > current_job_prio and \
                            not math.isclose(waiting_prio, current_job_prio, rel_tol=0.01):
-                            logging.warn(f"Inspection fail: waiting job of class {job_class.index} "
+                            logging.debug(f"Inspection fail: waiting job of class {job_class.index} "
                                 f"with priority {waiting_prio} while serving "
                                 f"{self.current_job.job_class.index} with prio {current_job_prio}")
                             self.num_inspections_failed += 1
 
                             t_overtake = self.policy.calculate_overtake_time(self.current_job,
                                                              waiting_job, self.current_time)
-                            logging.warn(f"Current time {self.current_time}, I would schedule "
+                            logging.debug(f"Current time {self.current_time}, I would schedule "
                                          f"overtake at {t_overtake}")
 
                             

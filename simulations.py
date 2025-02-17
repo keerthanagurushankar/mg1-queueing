@@ -80,6 +80,9 @@ class MG1:
         self.current_departure_event = None # departure event of job being served
         self.current_preemption_event = None # the preemption check to occur nearest in future
 
+        self.num_inspections_total = 0
+        self.num_inspections_failed = 0
+
         # Metrics
         self.metrics = []
         
@@ -88,7 +91,7 @@ class MG1:
             job = job_class.generate_next_job(0)
             heapq.heappush(self.event_queue, Event('Arrival', job.arrival_time, job))
 
-        # heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
+        heapq.heappush(self.event_queue, Event('Inspection', random.expovariate(self.inspection_rate)))
         
     def run(self):
         self.initialize()
@@ -107,6 +110,8 @@ class MG1:
                 self.handle_inspection()
             elif event.event_type == 'PreemptionCheck':
                 self.handle_preemption_check()
+
+        print(f"Failed {self.num_inspections_failed} / {self.num_inspections_total} inspections")        
 
     def handle_arrival(self, event):
         job = event.job
@@ -141,6 +146,7 @@ class MG1:
             self.start_service()
 
     def handle_inspection(self):
+        self.num_inspections_total += 1
         if self.current_job is None: 
             assert not self.job_queue, "if idle, must not have waiting jobs"
         else:
@@ -151,7 +157,8 @@ class MG1:
                 for job in self.job_queue:
                     job_priority = job.current_priority(self.current_time)
                     if job_priority > current_job_priority + 0.1:
-                        logging.warn(f"At time {self.current_time}, "
+                        self.num_inspections_failed += 1
+                        logging.debug(f"At time {self.current_time}, "
                           f"Not working on highest prio job {current_job_priority} < {job_priority}"
                           f"with respective classes {self.current_job.job_class.index, job.job_class.index}")
                     # assert job_priority <= current_job_priority + 0.1, "Not working on highest prio job" + f"\

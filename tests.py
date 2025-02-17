@@ -1,9 +1,9 @@
 import math, random
 import numpy as np
 
-# import simulations
-import time_based_sims as simulations
-# import event_based_sims as simulations
+#import simulations
+# import time_based_sims as simulations
+import event_based_sims as simulations
 import lib, policies as policy, derivations
 from termcolor import colored
 
@@ -207,10 +207,10 @@ def run_age_based_tests2():
         lambda t: 0.5*t**2 + t + 2  # Quadratic cost for class 2
     ]
 
-    holding_cost_rates = [
-        lambda t : c1 if t > d1 else 0,
-        lambda t : c2 if t > d2 else 0
-    ]
+    # holding_cost_rates = [
+    #     lambda t : c1 if t > d1 else 0,
+    #     lambda t : c2 if t > d2 else 0
+    # ]
 
     for idx, (l1, l2) in enumerate(load_conditions[-1:]):
         assert l1/mu1 + l2/mu2 < 1, "Load must be less than 1"
@@ -305,5 +305,5 @@ if __name__ == "__main__":
     # run_age_based_tests(l1, l2, mu1, mu2)
     # run_age_based_tests2()
     run_gittins_tests(policy.inst_gittins)
-    # run_gittins_tests2()
-    # run_age_comp_test(l1, l2, mu1, mu2, [1, 2], [0, 0], [0, 0])
+    run_gittins_tests2()
+    run_age_comp_test(l1, l2, mu1, mu2, [1, 2], [0, 0], [0, 0])
