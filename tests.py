@@ -1,8 +1,7 @@
 import math, random
 import numpy as np
 import lib, policies as policy, derivations
-# import simulations
-import time_based_sims as simulations
+import simulations.event_based_FCFS as simulations
 from termcolor import colored
 
 def print_test(test_label, empirical_val, theoretical_val):
@@ -230,23 +229,23 @@ def run_age_based_tests2():
         run_2Class_MG1_tests(test_name_aalto, l1, l2, lib.exp(mu1), lib.exp(mu2), AaltoPolicy)
 
 def run_gittins_tests(gttns_fn=policy.gittins):
-    # # Fixed identical holding costs test of Gittins and FCFS
-    # l1, mu1 = 3/8, 3
-    # c1, C1 = lambda t : 5, lambda t : 5*t
-    # l2, mu2, c2, C2 = l1, mu1, c1, C1
+    # Fixed identical holding costs test of Gittins and FCFS
+    l1, mu1 = 3/8, 3
+    c1, C1 = lambda t : 5, lambda t : 5*t
+    l2, mu2, c2, C2 = l1, mu1, c1, C1
     
-    # GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, gttns_fn=gttns_fn)
-    # run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
-    # run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
+    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, gttns_fn=gttns_fn)
+    run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
+    run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
 
-    # # One deadline identical classes test of Gittins and FCFS
-    # l1, mu1 = 3/8, 3
-    # c1, C1 = lambda t : 5 if t > 10 else 0, lambda t : 0 if t < 10 else 5*(t-10)
-    # l2, mu2, c2, C2 = l1, mu1, c1, C1
+    # One deadline identical classes test of Gittins and FCFS
+    l1, mu1 = 3/8, 3
+    c1, C1 = lambda t : 5 if t > 10 else 0, lambda t : 0 if t < 10 else 5*(t-10)
+    l2, mu2, c2, C2 = l1, mu1, c1, C1
     
-    # GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, gttns_fn=gttns_fn)
-    # run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
-    # run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
+    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10, gttns_fn=gttns_fn)
+    run_2Class_MG1_tests("Gittins", l1, l2, lib.exp(mu1), lib.exp(mu2), GittinsIdx)
+    run_2Class_MG1_tests("FCFS", l1, l2, lib.exp(mu1), lib.exp(mu2), policy.FCFS)
 
     # One deadline test of Gittins and Whittle
     l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
@@ -261,19 +260,19 @@ def run_gittins_tests(gttns_fn=policy.gittins):
 
 def run_gittins_tests2():
     # Gittins vs. Whittle on weird functions
-    l1, l2, mu1, mu2 = 1.8, 0.2, 3, 3
+    l1, l2, mu1, mu2 = 1.5, 0.5, 3, 1
     # dead1 = lambda t : 5 if t > 8 else 0, lambda t : 0 if t < 10 else 5*(t-8)
     # dead2 = lambda t : 5 if t > 10 else (1 if t > 5 else 0), lambda t : 5*(t-10)+5 if t > 10 else (t-5 if t > 5 else 0)
     # dead3 = lambda t : 3 if t > 7 else (2 if t > 3 else 0), lambda t : 3*(t-7)+8 if t > 7 else (2*(t-3) if t > 3 else 0)
     # quad1 = lambda t : t*t+2*t+1, lambda t : t*t*t/3+t*t+t
     # quad2 = lambda t : t*t+4*t+4, lambda t : t*t*t/3+2*t*t+4*t
     # osc = lambda t : math.exp(t) + math.sin(t), lambda t : math.exp(t) - math.cos(t)
-    def mono(x): return lambda t : (x+1)*(t**x), lambda t : t**(x+1)
+    # def mono(x): return lambda t : (x+1)*(t**x), lambda t : t**(x+1)
 
-    c1, C1 = mono(10)
-    c2, C2 = mono(10)
+    c1, C1 = lambda t : (t**3)/10+10, lambda t : (t**4)/40+10*t
+    c2, C2 = lambda t : 6*t, lambda t : 3*(t**2)
 
-    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], 10)
+    GittinsIdx = policy.iterativeGittins([l1, l2], [mu1, mu2], [c1, c2], [C1, C2], maxItr=10, alpha=0.1)
     policy.MG1_ECost_tests("Gittins", [l1, l2], [mu1, mu2], [C1, C2], GittinsIdx)
     WhittleIdx = policy.Whittle([l1, l2], [mu1, mu2], [c1, c2])
     policy.MG1_ECost_tests("Whittle", [l1, l2], [mu1, mu2], [C1, C2], WhittleIdx)
@@ -295,12 +294,12 @@ if __name__ == "__main__":
     l, mu = .4, 2
     l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1    # 0.15, 0.45; 0.65625
     
-    # run_basic_tests(l, mu, l1, l2, mu1, mu2)
-    # run_linear_tests(l1, l2, mu1, mu2)
-    # run_quadratic_tests(l1, l2, mu1, mu2)
-    # run_age_based_tests(l1, l2, mu1, mu2)
-    # run_age_based_tests2()
-    # run_gittins_tests()
-    run_gittins_tests(policy.inst_gittins)
+    run_basic_tests(l, mu, l1, l2, mu1, mu2)
+    run_linear_tests(l1, l2, mu1, mu2)
+    run_quadratic_tests(l1, l2, mu1, mu2)
+    run_age_based_tests(l1, l2, mu1, mu2)
+    run_age_based_tests2()
+    run_gittins_tests()
+    # run_gittins_tests(policy.inst_gittins)
     # run_gittins_tests2()
-    # run_age_comp_test(l1, l2, mu1, mu2, [1, 2], [0, 0], [0, 0])
+    run_age_comp_test(l1, l2, mu1, mu2, [1, 2], [0, 0], [0, 0])

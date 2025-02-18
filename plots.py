@@ -1,6 +1,7 @@
 import math, random, numpy as np
 import matplotlib.pyplot as plt
-import lib, time_based_sims as simulations, policies as policy
+import lib, policies as policy
+import simulations.event_based_FCFS as simulations
 import json, os, logging
 
 # CONSTANTS
@@ -206,10 +207,10 @@ def run_gittins_exp(name, mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha
                             p1, policy_fam) for name, policy_fam in policies.items()}
     gen_plot(exp_name, costs_by_policy, p1)
 
-def run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2,
+def run_normalized_exp(name, mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2,
                     age_values=np.arange(0, 15, 0.1), p1=0.25):
     # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2 * is(t>d2)
-    exp_name = 'normalized_exp'
+    exp_name = f'normalized_exp_{name}'
 
     whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
     gittins = lambda l1, l2: policy.iterativeGittins([l1, l2], [mu1, mu2], [c1_fn, c2_fn], [C1_fn, C2_fn],
@@ -247,32 +248,22 @@ if __name__ == "__main__":
     # gen_plot('gittins_exp', None, p1=0.5)
     # plt.show()
 
-    # # Same experiment including Gittins
-    # mu1, mu2, c1, c2, d1, d2 = 2, 2, 3, 3, 7, 7
-    # c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
-    # c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
-    # age_values = np.linspace(0, max(d1, d2)*1.1, 20)
+    # Same experiment including Gittins
+    mu1, mu2, c1, c2, d1, d2 = 2, 2, 3, 3, 7, 7
+    c1_fn, C1_fn = lambda t : c1 if t > d1 else 0, lambda t : c1*(t - d1) if t > d1 else 0
+    c2_fn, C2_fn = lambda t : c2 if t > d2 else 0, lambda t : c2*(t - d2) if t > d2 else 0
+    age_values = np.linspace(0, max(d1, d2)*1.1, 20)
 
-    # # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2, age_values=age_values, p1=0.25)
-    # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=100, alpha=0.07, age_values=age_values, p1=0.25)
-    # gen_plot('normalized_exp', None, p1=0.25)
-    # plt.show()
+    # run_normalized_exp("same", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.2, age_values=age_values, p1=0.25)
+    run_normalized_exp("same", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=20, alpha=0.07, age_values=age_values, p1=0.25)
+    gen_plot('normalized_exp_same', None, p1=0.25)
+    plt.show()
 
     # # Plotting r*
     # l1, l2, mu1, mu2 = 3/8, 3/8, 3, 1
     # c1, C1 = lambda t : 3 if t > 10 else 0, lambda t : 0 if t < 10 else 3*(t-10)
     # c2, C2 = lambda t : 1 if t > 5 else 0, lambda t : 0 if t < 5 else 1*(t-5)
     # policy.plotGittinsV('gittinsR.png', [l1, l2], [mu1, mu2], [c1, c2], [C1, C2], maxItr=10, initialPolicy=None)
-
-    # #Nomalized plot w/ high degree monomial
-    # mu1, mu2, c1, c2= 2, 2, 3, 3
-    # def mono(x): return lambda t : (x+1)*(t**x), lambda t : t**(x+1)
-    # c1_fn, C1_fn = mono(10)
-    # c2_fn, C2_fn = mono(10)
-
-    # run_normalized_exp(mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=100, alpha=0.07, p1=0.25)
-    # gen_plot('normalized_exp', None, p1=0.25)
-    # plt.show()
 
     # # Whittle paper plots
     # mu1, mu2 = 3, 1
@@ -293,9 +284,27 @@ if __name__ == "__main__":
     # gen_plot('gittins_exp_wp2', None, p1=0.5)
     # plt.show()
 
-    mu1, mu2 = 3, 1
-    c1_fn, C1_fn = lambda t : t**2, lambda t : (t**3)/3
-    c2_fn, C2_fn = lambda t : t+30, lambda t : (t**2)/2+30*t
-    run_gittins_exp("wp3", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.1, p1=0.75)
-    gen_plot('gittins_exp_wp3', None, p1=0.75)
-    plt.show()
+    # mu1, mu2 = 3, 1
+    # c1_fn, C1_fn = lambda t : t**2, lambda t : (t**3)/3
+    # c2_fn, C2_fn = lambda t : t+30, lambda t : (t**2)/2+30*t
+    # run_gittins_exp("wp3", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.1, p1=0.75)
+    # gen_plot('gittins_exp_wp3', None, p1=0.75)
+    # plt.show()
+
+    # # Monomial normalized plots:
+    # mu1, mu2 = 3, 1
+    # def mono(x): return lambda t : (x+1)*(t**x), lambda t : t**(x+1)
+    # c1_fn, C1_fn = mono(2)
+    # c2_fn, C2_fn = mono(4)
+    # run_normalized_exp("mono_2_4", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.1, p1=0.75)
+    # gen_plot('normalized_exp_mono_2_4', None, p1=0.75)
+    # plt.show()
+
+    # # Attempting to find a gap
+    # mu1, mu2 = 3, 1
+    # c1_fn, C1_fn = lambda t : (t**3)/10+10, lambda t : (t**4)/40+10*t
+    # c2_fn, C2_fn = lambda t : 6*t, lambda t : 3*(t**2)
+
+    # run_gittins_exp("2cross", mu1, mu2, c1_fn, c2_fn, C1_fn, C2_fn, maxItr=10, alpha=0.1, p1=0.75)
+    # gen_plot('gittins_exp_2cross', None, p1=0.75)
+    # plt.show()

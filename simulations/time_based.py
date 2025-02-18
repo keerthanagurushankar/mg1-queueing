@@ -1,12 +1,48 @@
 import heapq
 from collections import deque
-import math
+import math, random
 import json, os
 
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from simulations import Job, JobClass
+class Job:
+    def __init__(self, arrival_time, service_time, job_class):
+        self.arrival_time = arrival_time
+        self.service_time = service_time
+        self.remaining_time = service_time        
+        self.job_class = job_class
+        self.priority = job_class.priority(self.remaining_time, self.service_time, 0)
+
+    def __lt__(self, other):
+        if self.priority == other.priority: 
+            return self.arrival_time < other.arrival_time # older is better if unspecified
+        return self.priority > other.priority # higher priority is better
+
+    def current_priority(self, current_time):
+        return self.job_class.priority(self.remaining_time, self.service_time,
+                                        current_time - self.arrival_time)
+
+class JobClass:
+    def __init__(self, index, l, S, path=None): 
+        self.index = index
+        self.l = l
+        self.S = S
+        self.priority = None
+        
+        self.arrival_sequence = None
+        if path:
+            with open(f'{path}/arrival_sequence{index}.json', 'r') as f:
+                self.arrival_sequence = json.load(f)
+                self.sequence_index = -1
+
+    def generate_next_job(self, current_time):
+        if self.arrival_sequence and self.sequence_index < len(self.arrival_sequence)-1:
+            self.sequence_index += 1
+            return Job(self.arrival_sequence[self.sequence_index]['arrival_time'],
+                       self.arrival_sequence[self.sequence_index]['job_size'], self)
+
+        return Job(current_time + random.expovariate(self.l), self.S(), self)
 
 class MG1:
     def __init__(self, job_classes, policy, simulation_time=10**5, time_step=0.01, ClassFCFS=True):
