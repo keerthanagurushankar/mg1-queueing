@@ -27,7 +27,7 @@ def StrictPriorities(k, is_preemptive=True):
     policies = []
 
     for order in permutations(range(1, k+1)):
-        name = "PPrio" + "".join(map(str, order))
+        name = "Prio" + "".join(map(str, order))
         priority_fn = lambda r, s, t, j, order=order: -order.index(j)
         policies.append(Policy(name, priority_fn, is_preemptive=is_preemptive))
         

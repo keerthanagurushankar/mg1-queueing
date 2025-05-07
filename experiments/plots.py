@@ -1,13 +1,13 @@
 import math, random, numpy as np
 import matplotlib.pyplot as plt
 import lib, policies as policy
-import simulations.time_based as simulations
+import simulations.event_based as simulations
 import json, os, logging
-plt.rcParams.update({'font.size': 14})
+plt.rcParams.update({'font.size': 16})
 
 # CONSTANTS
 
-rhos = np.linspace(0.8, 1, 15)[8:-1]
+rhos = np.linspace(0.75, 1, 20)[:-1]
 
 
 # HELPER FUNCTIONS
@@ -109,6 +109,28 @@ def time_avg_costs2(rhos, costs, p1=0.5):
     ls = rhos / (1/3 / mu1 + 1/3 / mu2 + 1/3/mu3)
     return ls * costs
 
+def gen_lookahead_amount_plot(exp_name, policies, mu1, mu2, p1):
+    lookahead = policies["Whittle"][0]
+    def lookahead_amount(rho):
+        l = rho / (p1 / mu1 + (1-p1) / mu2)
+        l1, l2 = p1 * l, (1-p1)* l
+        return lookahead(l1, l2).lookahead_amount
+    
+    
+    plt.figure()
+    plt.plot(rhos, len(rhos)*[policies[r"gen-$c\mu$"][0].lookahead_amount],
+             label=r"gen-$c\mu$",linestyle='-', linewidth=2, color='green', alpha=0.7)
+    plt.plot(rhos, len(rhos)*[policies["Aalto"][0].lookahead_amount],
+             label="Aalto",linestyle='-', linewidth=2, color='orange', alpha=0.7)    
+    plt.plot(rhos, [lookahead_amount(rho) for rho in rhos], label="Us",
+             linestyle='-', linewidth=2, color='red', alpha=0.7)
+    plt.plot(rhos, len(rhos)*[0],
+             label="Prio",linestyle='-', linewidth=2, color='purple', alpha=0.7)    
+    plt.xlabel('Load')
+    plt.ylabel('Overtake age')
+    #plt.legend()
+    plt.legend(loc = "lower left")    
+
 def gen_plot(exp_name, costs_by_policy, p1=0.5):
     # given costs_by_policy: dict[str->list[list[float]]] (or read from file)
     costs_fname = f'{exp_name}/costs{p1}.json'
@@ -148,8 +170,8 @@ def gen_plot(exp_name, costs_by_policy, p1=0.5):
             plt.plot(
                 #list(rhos[::2]),list(costs[::2]) ,
                 #np.delete(rhos, [1, 4,8, 10]), np.delete(costs, [1, 4,8, 10]),
-                np.delete(rhos, [5, 10]),np.delete(costs, [5, 10]),
-                #np.delete(rhos, [-4]),np.delete(costs, [-4]),
+                #np.delete(rhos, [3,5,7]),np.delete(costs, [3,5,7]),
+                np.delete(rhos, [7]),np.delete(costs, [7]),
                 #rhos, costs,
                 label=policy,linestyle=ls, linewidth=lw, color=color, alpha=alpha)
 
@@ -158,8 +180,12 @@ def gen_plot(exp_name, costs_by_policy, p1=0.5):
     #plt.ylim(0, 3000) # polynomial balanced
     #plt.ylim(0, 25) # 2 deadline balanced
     #plt.ylim(-300, 20000)
-    plt.ylim(0, 3000)
-    plt.xlim(0.8, 0.97)
+    plt.ylim(0, 2500)
+    plt.xlim(0.75, 0.95)
+    #our_costs = time_avg_costs(rhos, costs_by_policy[r'gen-$c\mu$'], p1)
+    #plt.ylim(our_costs[0]*0.9, our_costs[-1] * 1.1)
+    #plt.ylim(0,20)
+    #plt.yscale('log')
     plt.xlabel('Load')
     plt.ylabel('Time-avg Total Holding Cost')
     plt.legend(loc = "upper left")
@@ -310,10 +336,11 @@ if __name__ == "__main__":
             if policy == "PPrio":
                 policy = "Prio"
                 
-            plt.plot(np.delete(rhos, [2, 4, 8]), np.delete(costs, [2, 4, 8]),
+            plt.plot(np.delete(rhos), np.delete(costs, [2, 4, 8]),
                      label=policy, linestyle=ls, linewidth=lw, color=color, alpha=alpha)
+    ylim = 0
 
-    plt.ylim(0, 10000)
+    plt.ylim(0, avg_costs_by_policy['Us'] * 1.1)
     plt.xlim(0.8, 0.97)
     plt.xlabel('Load')
     plt.ylabel('Time-avg Total Holding Cost')    

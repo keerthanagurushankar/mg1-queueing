@@ -28,6 +28,7 @@ def AccPrio(b1, b2, is_preemptive=True):
 def Lookahead(alpha):
     policy = LinearAccPrio([0, alpha], [1, 0], is_preemptive=True)
     policy.policy_name = f"Lookahead({round(alpha, 2)})"
+    policy.lookahead_amount = alpha
     return policy
 
 def LinearWhittle(arrival_rates, service_rates, cost_rates):

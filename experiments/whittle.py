@@ -1,5 +1,6 @@
 import math, random, numpy as np
-import policies as policy, plots as plot
+import policies as policy
+from .plots import gen_plot
 import matplotlib.pyplot as plt
 
 accprio_b1s = np.logspace(-np.log(5), np.log(5), 20, base=np.e) # np.linspace(1, 30, 12)
@@ -23,7 +24,7 @@ def run_1deadline_exp(mu1, mu2, c1, c2, d1, p1=0.5):
                  'PPrio': [policy.PPrio12, policy.PPrio21]}
     costs_by_policy = {name: plot.compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                         p1, policy_fam) for name, policy_fam in policies.items()}
-    plot.gen_plot(exp_name, costs_by_policy, p1)
+    gen_plot(exp_name, costs_by_policy, p1)
 
 def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.5):
     # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2 * is(t>d2)
@@ -51,7 +52,7 @@ def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.5):
 
     costs_by_policy = {name: plot.compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
-    plot.gen_plot(exp_name, costs_by_policy, p1)
+    gen_plot(exp_name, costs_by_policy, p1)
 
 def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.5):
     # instantaneous c1(t) = c1 t, c2(t) = c2 t
@@ -77,7 +78,7 @@ def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.5):
 
     costs_by_policy = {name: plot.compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
                             p1, policy_fam) for name, policy_fam in policies.items()}
-    plot.gen_plot(exp_name, costs_by_policy, p1)
+    gen_plot(exp_name, costs_by_policy, p1)
 
 def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.5):
     # instantaneous c1(t) = c1 t + d1, c2(t) = c2 t^2
@@ -123,19 +124,19 @@ if __name__ == "__main__":
 
     #run_1deadline_exp(mu1, mu2, 10**3, c2, d1, 0.5)
     #run_2deadline_exp(mu1, mu2, 10**6, c2, d1, d2, 0.5)
-    #run_1deadline_exp(3, 1, 10, 1, 5, 0.5)
+    #run_1deadline_exp(3, 1, 10, 1, 5, 0.9)
     #run_2deadline_exp(3, 1, 10**6, 1, 10, 5, 0.5)
     #run_linear_cost_exp(3, 1, 1, 10, 0.9)
     
     #run_polynomial_cost_exp(3, 1, 1, 5, 0, 0.75)
-    run_polynomial_cost_exp(3, 1, 1, 1, 30, 0.75)
+    #run_polynomial_cost_exp(3, 1, 1, 1, 30, 0.75)
     #run_1deadline_exp(3, 1, 10, 1, 2, 0.9)
     #run_2deadline_exp(3, 1, 10, 1, 10, 5, 0.5)
 
     #plot.gen_plot('polynomial_cost_exp3', None, p1 = 0.75)
     #plot.gen_plot2(['1deadline_exp3', '1deadline_exp4'], None, p1=0.9)
     #plot.gen_plot('1deadline_exp', None, p1=0.9)
-    #plot.gen_plot('2deadline_exp_balanced2', None, p1=0.5)
+    plot.gen_plot('2deadline_exp', None, p1=0.5)
     #plot.gen_plot('linear_cost_exp3', None, p1 = 0.1)
     #gen_plot('multiclass_exp4', None, p1=0.5)
 
