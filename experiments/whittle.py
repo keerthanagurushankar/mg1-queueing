@@ -1,8 +1,10 @@
 import math, random, numpy as np
 import policies as policy
-from .plots import gen_plot
+from . import utils
 import matplotlib.pyplot as plt
+import json
 
+rhos = np.linspace(0.8, 1, 15)[:-1]
 accprio_b1s = np.logspace(-np.log(5), np.log(5), 20, base=np.e) # np.linspace(1, 30, 12)
 
 # EXPERIMENT FUNCTIONS
@@ -22,9 +24,9 @@ def run_1deadline_exp(mu1, mu2, c1, c2, d1, p1=0.5):
                  "Aalto": [aalto],
                  r'gen-$c\mu$' : [policy.Lookahead(d1)],
                  'PPrio': [policy.PPrio12, policy.PPrio21]}
-    costs_by_policy = {name: plot.compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
-                        p1, policy_fam) for name, policy_fam in policies.items()}
-    gen_plot(exp_name, costs_by_policy, p1)
+    costs_by_policy = {name: utils.compute_best_costs(exp_name, rhos, [mu1, mu2], 
+        [C1_fn, C2_fn], [p1, 1-p1], policy_fam) for name, policy_fam in policies.items()}
+    utils.gen_plot(exp_name, rhos, costs_by_policy)
 
 def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.5):
     # instantaneous c1(t) = c1 * is(t > d1), c2(t) = c2 * is(t>d2)
@@ -49,10 +51,10 @@ def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.5):
                 'Whittle': [whittle],
                 'Aalto': [aalto]
                 }
-
-    costs_by_policy = {name: plot.compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
-                            p1, policy_fam) for name, policy_fam in policies.items()}
-    gen_plot(exp_name, costs_by_policy, p1)
+    
+    costs_by_policy = {name: utils.compute_best_costs(exp_name, rhos, [mu1, mu2], 
+        [C1_fn, C2_fn], [p1, 1-p1], policy_fam) for name, policy_fam in policies.items()}
+    utils.gen_plot(exp_name, rhos, costs_by_policy)
 
 def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.5):
     # instantaneous c1(t) = c1 t, c2(t) = c2 t
@@ -76,9 +78,9 @@ def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.5):
                 'PPrio': [policy.PPrio12, policy.PPrio21],
                 'Aalto': [aalto]}
 
-    costs_by_policy = {name: plot.compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
-                            p1, policy_fam) for name, policy_fam in policies.items()}
-    gen_plot(exp_name, costs_by_policy, p1)
+    costs_by_policy = {name: utils.compute_best_costs(exp_name, rhos, [mu1, mu2], 
+        [C1_fn, C2_fn], [p1, 1-p1], policy_fam) for name, policy_fam in policies.items()}
+    utils.gen_plot(exp_name, rhos, costs_by_policy)
 
 def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.5):
     # instantaneous c1(t) = c1 t + d1, c2(t) = c2 t^2
@@ -110,12 +112,75 @@ def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.5):
                # 'PPrio': [policy.PPrio12, policy.PPrio21],
                # 'FCFS':[policy.FCFS],
                 }
+    costs_by_policy = {name: utils.compute_best_costs(exp_name, rhos, [mu1, mu2], 
+        [C1_fn, C2_fn], [p1, 1-p1], policy_fam) for name, policy_fam in policies.items()}
+    utils.gen_plot(exp_name, rhos, costs_by_policy)
 
-    costs_by_policy = {name: plot.compute_best_costs(exp_name, mu1, mu2, C1_fn, C2_fn,
-                            p1, policy_fam) for name, policy_fam in policies.items()}
-    plot.gen_plot(exp_name, costs_by_policy, p1)
+def run_multiclass_poly_exp(service_rates, cost_rates, p1=0.5):
+    # ci(t) = ai t^2 + bi t + ci where (ai, bi, ci) in cost_rates
+    exp_name = 'multiclass_exp4'#+str(round(np.random.rand(),2))
+
+    # remember experiment parameters
+    params = {'rhos':list(rhos),
+              'service_rates':list(service_rates),
+              'cost_rates':[list(cs) for cs in cost_rates]}
+    json.dump(params, open(exp_name+'/params.json', 'w'))
+
+    cumulative_cost_rates = [lambda t, c=cost_rates[i]:
+                             c[0] * t**3/3 + c[1] * t**2/2 + c[2] * t
+                             for i in range(len(cost_rates))]
+
+    def whittle(arrival_rates):
+        return policy.QuadraticWhittle(arrival_rates, service_rates, cost_rates)
+    def aalto(arrival_rates):
+        return policy.QuadraticAalto(arrival_rates, service_rates, cost_rates)
+    gen_cmu = policy.QuadraticGenCMU(service_rates, cost_rates)
+
+    acc_prios = [policy.LinearAccPrio([0, 0, 0], [b1, b2, b3])
+                 for b1 in np.logspace(0, np.log(5), 4, base=np.e)
+                 for b2 in np.logspace(0, np.log(5), 4, base=np.e)
+                 for b3 in np.logspace(0, np.log(5), 4, base=np.e)]
+
+    policies = {
+                #'PPrio': policy.StrictPriorities(len(service_rates)),            
+                #r'gen-$c\mu$': [gen_cmu],
+                #'Whittle': [whittle],
+                #'FCFS':[policy.FCFS],
+                'AccPrio*': acc_prios,
+                #'Aalto': [aalto]
+                }
+
+    k = len(service_rates)
+    costs_by_policy = {name:  utils.compute_best_costs(exp_name, rhos, 
+                        service_rates, cumulative_cost_rates, [1/k]*k, policy) 
+                        for name, policy in policies.items()}
+    utils.gen_plot(exp_name, rhos, costs_by_policy)
 
 
+def run_multiclass_exp(exp_name, service_rates, cost_fns, cumulative_cost_fns, p1=0.5):
+    #exp_name = 'multiclass_exp4'#+str(round(np.random.rand(),2))
+
+    age_values = np.linspace(0, 20, 20)
+    gen_cmu = policy.generalized_cmu(service_rates, cost_fns, age_values)
+    whittle = lambda arrival_rates: policy.Whittle(
+        arrival_rates, service_rates, cost_fns, age_values)
+    aalto = lambda arrival_rates: policy.Aalto(
+        arrival_rates, service_rates, cost_fns, age_values)
+
+    policies = {#'PPrio': policy.PPrio12,
+                'PPrio': policy.StrictPriorities(len(service_rates)),        
+                r'gen-$c\mu$': gen_cmu,
+                'Whittle': whittle,
+                'FCFS':policy.FCFS,
+                #'AccPrio*': accprios,
+                'Aalto': aalto
+                }
+    
+    k = len(service_rates)
+    costs_by_policy = {name:  utils.compute_best_costs(exp_name, rhos, 
+                        service_rates, cumulative_cost_fns, [1/k]*k, policy) 
+                        for name, policy in policies.items()}
+    utils.gen_plot(exp_name, rhos, costs_by_policy)
 
 if __name__ == "__main__":
     # given S1 ~ exp(mu1), S2 ~ exp(mu2), cost rate "constants" c1, c2
@@ -136,7 +201,7 @@ if __name__ == "__main__":
     #plot.gen_plot('polynomial_cost_exp3', None, p1 = 0.75)
     #plot.gen_plot2(['1deadline_exp3', '1deadline_exp4'], None, p1=0.9)
     #plot.gen_plot('1deadline_exp', None, p1=0.9)
-    plot.gen_plot('2deadline_exp', None, p1=0.5)
+    utils.gen_plot('2deadline_exp', rhos, None)
     #plot.gen_plot('linear_cost_exp3', None, p1 = 0.1)
     #gen_plot('multiclass_exp4', None, p1=0.5)
 
