@@ -1,6 +1,7 @@
 import math, random, numpy as np
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import policies as policy
-from . import utils
+from experiments import utils
 import matplotlib.pyplot as plt
 import json
 
@@ -15,8 +16,8 @@ def run_1deadline_exp(mu1, mu2, c1, c2, d1, p1=0.5):
     C1_fn = lambda t : c1*(t - d1) if t > d1 else 0
     C2_fn = lambda t : c2 * t # cumulative cost fns
 
-    lookahead = lambda l1, l2: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1 - l1))
-    aalto = lambda l1, l2: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1))
+    lookahead = lambda ar: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1 - ar[0]))
+    aalto = lambda ar: policy.Lookahead(d1 - np.log(mu1*c1/mu2/c2) / (mu1))
     accprios = [policy.AccPrio(b1, 1) for b1 in accprio_b1s]
     policies = { "FCFS": [policy.FCFS],
                  #"AccPrio*": accprios,
@@ -36,8 +37,8 @@ def run_2deadline_exp(mu1, mu2, c1, c2, d1, d2, p1=0.5):
 
     age_values = np.linspace(0, max(d1, d2)*1.1, 20)
     gen_cmu = policy.generalized_cmu([mu1, mu2], [c1_fn, c2_fn], age_values)
-    whittle = lambda l1, l2: policy.Whittle([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
-    aalto = lambda l1, l2: policy.Aalto([l1, l2], [mu1, mu2], [c1_fn, c2_fn], age_values)
+    whittle = lambda ar: policy.Whittle(ar, [mu1, mu2], [c1_fn, c2_fn], age_values)
+    aalto = lambda ar: policy.Aalto(ar, [mu1, mu2], [c1_fn, c2_fn], age_values)
     a_max = d1 - np.log(mu1*c1/mu2/c2)/mu1
 
     # (^if d2=l1=0, opt lookahead is latest we should prioritize class 1 in 2 deadline case)
@@ -62,11 +63,11 @@ def run_linear_cost_exp(mu1, mu2, c1, c2, p1=0.5):
     c1_fn, C1_fn = lambda t : c1 * t, lambda t : c1 * t**2 / 2
     c2_fn, C2_fn = lambda t : c2 * t, lambda t : c2 * t**2 / 2
 
-    def whittle(l1, l2):
-        return policy.LinearWhittle([l1, l2], [mu1, mu2], [(c1, 0), (c2, 0)])
-    def aalto(l1, l2):
-        return policy.LinearAalto([l1, l2], [mu1, mu2], [(c1, 0), (c2, 0)])
-    def gen_cmu(l1, l2):
+    def whittle(ar):
+        return policy.LinearWhittle(ar, [mu1, mu2], [(c1, 0), (c2, 0)])
+    def aalto(ar):
+        return policy.LinearAalto(ar, [mu1, mu2], [(c1, 0), (c2, 0)])
+    def gen_cmu(ar):
         gencmu = policy.AccPrio(mu1 * c1, mu2 * c2, is_preemptive=True)
         gencmu.policy_name = r'gen-$c\mu$'
         return gencmu
@@ -88,15 +89,15 @@ def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.5):
     exp_name = 'polynomial_cost_exp3' #3
     C1_fn, C2_fn = lambda t : c1 * t**2 / 2 + d1 * t, lambda t : c2 * t**3 / 3
 
-    def whittle(l1, l2):
+    def whittle(ar):
         cost_rate1, cost_rate2 = (0, c1, d1), (c2, 0, 0)
-        return policy.QuadraticWhittle([l1, l2], [mu1, mu2], [cost_rate1, cost_rate2])
+        return policy.QuadraticWhittle(ar, [mu1, mu2], [cost_rate1, cost_rate2])
 
-    def aalto(l1, l2):
+    def aalto(ar):
         cost_rate1, cost_rate2 = (0, c1, d1), (c2, 0, 0)
-        return policy.QuadraticAalto([l1, l2], [mu1, mu2], [cost_rate1, cost_rate2])
+        return policy.QuadraticAalto(ar, [mu1, mu2], [cost_rate1, cost_rate2])
 
-    def gen_cmu(l1, l2):
+    def gen_cmu(ar):
         gencmu = policy.QuadraticAccPrio([0, mu2 * c2], [mu1 * c1, 0], [mu1 * d1, 0])
         gencmu.policy_name = r'gen-$c\mu$'
         return gencmu
@@ -104,13 +105,14 @@ def run_polynomial_cost_exp(mu1, mu2, c1, c2, d1, p1=0.5):
     accprios = [policy.AccPrio(1, b1) for b1 in accprio_b1s]
 
     policies = {
-               'AccPrio*': accprios,
+               
                'Whittle': [whittle],
-               # 'Aalto': [aalto],
-               # r'gen-$c\mu$': [gen_cmu],
-               # 
-               # 'PPrio': [policy.PPrio12, policy.PPrio21],
-               # 'FCFS':[policy.FCFS],
+               'Aalto': [aalto],
+               r'gen-$c\mu$': [gen_cmu],
+               
+               'PPrio': [policy.PPrio12, policy.PPrio21],
+               'FCFS':[policy.FCFS],
+               'AccPrio*': accprios,
                 }
     costs_by_policy = {name: utils.compute_best_costs(exp_name, rhos, [mu1, mu2], 
         [C1_fn, C2_fn], [p1, 1-p1], policy_fam) for name, policy_fam in policies.items()}
@@ -194,14 +196,14 @@ if __name__ == "__main__":
     #run_linear_cost_exp(3, 1, 1, 10, 0.9)
     
     #run_polynomial_cost_exp(3, 1, 1, 5, 0, 0.75)
-    #run_polynomial_cost_exp(3, 1, 1, 1, 30, 0.75)
+    run_polynomial_cost_exp(3, 1, 1, 1, 30, 0.75)
     #run_1deadline_exp(3, 1, 10, 1, 2, 0.9)
     #run_2deadline_exp(3, 1, 10, 1, 10, 5, 0.5)
 
-    #plot.gen_plot('polynomial_cost_exp3', None, p1 = 0.75)
+    #utils.gen_plot('polynomial_cost_exp3', None,  0.75)
     #plot.gen_plot2(['1deadline_exp3', '1deadline_exp4'], None, p1=0.9)
     #plot.gen_plot('1deadline_exp', None, p1=0.9)
-    utils.gen_plot('2deadline_exp', rhos, None)
+    #utils.gen_plot('2deadline_exp', rhos, None)
     #plot.gen_plot('linear_cost_exp3', None, p1 = 0.1)
     #gen_plot('multiclass_exp4', None, p1=0.5)
 

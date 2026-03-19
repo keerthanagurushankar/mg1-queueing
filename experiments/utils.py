@@ -1,7 +1,8 @@
 import math, random, numpy as np
 import matplotlib.pyplot as plt
 import lib, policies as policy
-import simulations.event_based as simulations
+#import simulations.event_based as simulations
+import simulations.time_based as simulations
 import json, os, logging
 from typing import Callable, List, Tuple, Dict
 plt.rcParams.update({'font.size': 16})
